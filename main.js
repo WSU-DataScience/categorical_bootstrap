@@ -5401,7 +5401,7 @@ var $author$project$DataSet$tumaalBloodType = {
 	counts: A2($elm$core$List$map, $elm$core$Tuple$second, $author$project$DataSet$tumaalFreq),
 	frequencies: A2($elm$core$List$map, $author$project$DataSet$makeLabelFreq, $author$project$DataSet$tumaalFreq),
 	labels: A2($elm$core$List$map, $elm$core$Tuple$first, $author$project$DataSet$tumaalFreq),
-	name: 'Tumaal/Midgaan Blood Types'
+	name: 'Tumaal Blood Types'
 };
 var $author$project$DataSet$datasets = _List_fromArray(
 	[$author$project$DataSet$somaliBloodType, $author$project$DataSet$tumaalBloodType]);
@@ -12810,8 +12810,10 @@ var $author$project$Binomial$getBinomGen = F2(
 		return A2($author$project$Binomial$makeConvertToSquareHistogram, min, bars);
 	});
 var $author$project$Main$updateBinomGen = function (sample) {
+	var successes = sample.numSuccess;
 	var n = sample.n;
-	var p = sample.numSuccess / n;
+	var nF = n;
+	var p = successes / nF;
 	return A2($author$project$Binomial$getBinomGen, n, p);
 };
 var $author$project$Main$updateBinom = F2(
@@ -16329,7 +16331,8 @@ var $author$project$Main$dropdownItem = F2(
 			_List_fromArray(
 				[
 					$elm$html$Html$Events$onClick(
-					msg(txt))
+					msg(txt)),
+					A2($elm$html$Html$Attributes$style, 'width', 'max-content !important')
 				]),
 			_List_fromArray(
 				[
@@ -16478,6 +16481,12 @@ var $author$project$Main$makeTableRow = function (labelFreq) {
 						$elm$core$String$fromInt(labelFreq.count))
 					]))
 			]));
+};
+var $rundis$elm_bootstrap$Bootstrap$Dropdown$MenuAttrs = function (a) {
+	return {$: 'MenuAttrs', a: a};
+};
+var $rundis$elm_bootstrap$Bootstrap$Dropdown$menuAttrs = function (attrs_) {
+	return $rundis$elm_bootstrap$Bootstrap$Dropdown$MenuAttrs(attrs_);
 };
 var $rundis$elm_bootstrap$Bootstrap$Utilities$Spacing$ml1 = $elm$html$Html$Attributes$class('ml-1');
 var $rundis$elm_bootstrap$Bootstrap$Form$Select$OnChange = function (a) {
@@ -17981,7 +17990,17 @@ var $author$project$Main$dataEntryInputGroupView = function (model) {
 							{
 								items: $author$project$Main$dropdownData(model.datasets),
 								options: _List_fromArray(
-									[$rundis$elm_bootstrap$Bootstrap$Dropdown$alignMenuRight]),
+									[
+										$rundis$elm_bootstrap$Bootstrap$Dropdown$alignMenuRight,
+										$rundis$elm_bootstrap$Bootstrap$Dropdown$menuAttrs(
+										_List_fromArray(
+											[
+												A2($elm$html$Html$Attributes$style, 'font-size', 'smaller'),
+												A2($elm$html$Html$Attributes$style, 'max-height', 'max-content'),
+												A2($elm$html$Html$Attributes$style, 'max-width', 'max-content'),
+												A2($elm$html$Html$Attributes$style, 'width', '200px !important')
+											]))
+									]),
 								toggleButton: A2(
 									$rundis$elm_bootstrap$Bootstrap$Dropdown$toggle,
 									_List_fromArray(

@@ -85,6 +85,7 @@ type alias Model =
     }
 
 
+initModel : Model
 initModel = { datasets = DataSet.datasets
             , csv = Nothing
             , dataDropState = Dropdown.initialState
@@ -143,14 +144,18 @@ type Msg
 
 -- update
 
+updateBinomGen : Sample -> (Float -> Int)
 updateBinomGen sample =
     let
         n = sample.n
-        p = (toFloat sample.numSuccess)/(toFloat n)
+        nF = n |> toFloat
+        successes = sample.numSuccess |> toFloat
+        p = successes / nF
     in
         getBinomGen n p
     
 
+updateYs : List Float -> Model -> Model
 updateYs ws model =
     let
         (newYs, newTrials) = 
@@ -632,9 +637,17 @@ fileContent model =
               |> text
             ]
 
+-- .dropdown-item { 
+--   width: max-content !important;
+-- }
 
+-- .dropdown-menu {
+
+--     max-height: max-content;
+--     max-width: max-content;
+-- }
 dropdownItem msg txt =
-    Dropdown.buttonItem [ onClick (txt |> msg) ] [ Html.text txt ]
+    Dropdown.buttonItem [ onClick (txt |> msg),  style "width" "max-content !important" ] [ Html.text txt ]
 
 dropdownDataItem = dropdownItem ChangeData
 
@@ -727,7 +740,12 @@ dataEntryInputGroupView model =
             |> InputGroup.successors
                     [ InputGroup.dropdown
                         model.dataDropState
-                        { options = [ Dropdown.alignMenuRight ]
+                        { options = [ Dropdown.alignMenuRight
+                                    , Dropdown.menuAttrs [ style "font-size" "smaller"
+                                                         , style "max-height" "max-content"
+                                                         , style "max-width" "max-content" 
+                                                         , style "width" "200px !important"]
+                                    ]
                         , toggleMsg = DataDropMsg
                         , toggleButton = 
                             Dropdown.toggle [ Button.outlinePrimary -- pulldownOutline model
@@ -746,7 +764,7 @@ dataEntryInputGroupView model =
             |> InputGroup.successors
                     [ InputGroup.dropdown
                         model.successDropState
-                        { options = [ Dropdown.alignMenuRight ]
+                        { options = [ Dropdown.alignMenuRight]
                         , toggleMsg = SuccessDropMsg
                         , toggleButton = successButtonToggle model
                         , items = dropdownSuccess model

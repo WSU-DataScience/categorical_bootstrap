@@ -2,14 +2,13 @@ module DataSet exposing (..)
 
 
 import List.Extra exposing (find, group, zip)
-import Maybe exposing (withDefault)
 
 type Statistic = NotSelected | Count | Proportion
 type alias LabelFreq =  { label : String
                         , count : Int
                         }
 
-type alias DataSet =    { name : String
+type alias DataSet =    { name : String -- Should be ~18 characters or less
                         , frequencies : List LabelFreq
                         , labels : List String
                         , counts : List Int
@@ -46,7 +45,7 @@ tumaalFreq =    [ ("A", 16)
 
 
 tumaalBloodType : DataSet
-tumaalBloodType =   { name = "Tumaal/Midgaan Blood Types"
+tumaalBloodType =   { name = "Tumaal Blood Types"
                     , frequencies = List.map makeLabelFreq tumaalFreq
                     , labels = List.map Tuple.first tumaalFreq
                     , counts = List.map Tuple.second tumaalFreq
