@@ -12951,22 +12951,16 @@ var $elm$core$List$minimum = function (list) {
 		return $elm$core$Maybe$Nothing;
 	}
 };
-var $author$project$Main$updateDistPlotConfig = function (model) {
-	var _v0 = model.originalSample;
-	if (_v0.$ === 'Nothing') {
-		return model;
-	} else {
-		var sample = _v0.a;
-		var numSD = $author$project$Defaults$defaults.numSD;
+var $author$project$Main$sampleConfig = F2(
+	function (model, sample) {
 		var n = sample.n;
 		var p = sample.numSuccess / n;
-		var sd = (p * (1 - p)) / n;
 		var mean = n * p;
 		var tailExpr = A2($author$project$DistPlot$getTailExpression, mean, model.tailLimit);
 		var isLarge = _Utils_cmp(model.trials, $author$project$Defaults$defaults.largePlot) > 0;
-		var _v1 = A2($author$project$DistPlot$getXandY, isLarge, model.ys);
-		var xs = _v1.a;
-		var ys = _v1.b;
+		var _v0 = A2($author$project$DistPlot$getXandY, isLarge, model.ys);
+		var xs = _v0.a;
+		var ys = _v0.b;
 		var largestX = A2(
 			$elm$core$Maybe$withDefault,
 			n,
@@ -12981,20 +12975,29 @@ var $author$project$Main$updateDistPlotConfig = function (model) {
 			$elm$core$Maybe$withDefault,
 			0,
 			$elm$core$List$minimum(xs)) - 3;
-		var config = $elm$core$Maybe$Just(
-			{
-				mark: isLarge ? $gicentre$elm_vegalite$VegaLite$bar : $gicentre$elm_vegalite$VegaLite$circle,
-				maxX: A2($elm$core$Basics$min, 1, largestX / n),
-				maxY: $author$project$DistPlot$getMaxHeight(model.ys),
-				minX: A2($elm$core$Basics$max, 0, smallestX / n),
-				tailExpression: tailExpr,
-				xAxisTitle: 'Proportion of ' + sample.successLbl,
-				xs: ps,
-				ys: ys
-			});
+		return {
+			mark: isLarge ? $gicentre$elm_vegalite$VegaLite$bar : $gicentre$elm_vegalite$VegaLite$circle,
+			maxX: A2($elm$core$Basics$min, 1, largestX / n),
+			maxY: $author$project$DistPlot$getMaxHeight(model.ys),
+			minX: A2($elm$core$Basics$max, 0, smallestX / n),
+			tailExpression: tailExpr,
+			xAxisTitle: 'Proportion of ' + sample.successLbl,
+			xs: ps,
+			ys: ys
+		};
+	});
+var $author$project$Main$updateDistPlotConfig = function (model) {
+	var _v0 = model.originalSample;
+	if (_v0.$ === 'Nothing') {
+		return model;
+	} else {
+		var sample = _v0.a;
 		return _Utils_update(
 			model,
-			{distPlotConfig: config});
+			{
+				distPlotConfig: $elm$core$Maybe$Just(
+					A2($author$project$Main$sampleConfig, model, sample))
+			});
 	}
 };
 var $author$project$Main$apply = F2(
@@ -13169,37 +13172,6 @@ var $author$project$Main$updatePerspective = function (model) {
 var $author$project$Limits$Lower = function (a) {
 	return {$: 'Lower', a: a};
 };
-var $author$project$Limits$TwoTail = F2(
-	function (a, b) {
-		return {$: 'TwoTail', a: a, b: b};
-	});
-var $author$project$Limits$Upper = function (a) {
-	return {$: 'Upper', a: a};
-};
-var $author$project$Main$divideBy = F2(
-	function (denom, numer) {
-		return numer / denom;
-	});
-var $author$project$Main$getPercentiles = F3(
-	function (n, trials, counts) {
-		return function (el) {
-			return A2(
-				$elm_community$list_extra$List$Extra$zip,
-				A2($elm$core$List$map, $elm$core$Tuple$first, el),
-				A3(
-					$elm_community$list_extra$List$Extra$scanl,
-					$elm$core$Basics$add,
-					0,
-					A2($elm$core$List$map, $elm$core$Tuple$second, el)));
-		}(
-			A2(
-				$elm$core$List$map,
-				A2(
-					$elm$core$Tuple$mapBoth,
-					$author$project$Main$divideBy(n),
-					$author$project$Main$divideBy(trials)),
-				$elm$core$Dict$toList(counts)));
-	});
 var $elm_community$list_extra$List$Extra$takeWhile = function (predicate) {
 	var takeWhileMemo = F2(
 		function (memo, list) {
@@ -13238,6 +13210,48 @@ var $author$project$Main$leftTailBound = F2(
 						$elm$core$Basics$gt(tailArea)),
 					percentiles)));
 	});
+var $author$project$Main$divideBy = F2(
+	function (denom, numer) {
+		return numer / denom;
+	});
+var $author$project$Main$getPercentiles = F3(
+	function (n, trials, counts) {
+		return function (el) {
+			return A2(
+				$elm_community$list_extra$List$Extra$zip,
+				A2($elm$core$List$map, $elm$core$Tuple$first, el),
+				A3(
+					$elm_community$list_extra$List$Extra$scanl,
+					$elm$core$Basics$add,
+					0,
+					A2($elm$core$List$map, $elm$core$Tuple$second, el)));
+		}(
+			A2(
+				$elm$core$List$map,
+				A2(
+					$elm$core$Tuple$mapBoth,
+					$author$project$Main$divideBy(n),
+					$author$project$Main$divideBy(trials)),
+				$elm$core$Dict$toList(counts)));
+	});
+var $author$project$Main$oneTailBound = F5(
+	function (boundFunc, tailFunc, model, level, sample) {
+		var tailArea = 1 - level;
+		return A2(
+			$elm$core$Maybe$withDefault,
+			$author$project$Limits$NoBounds,
+			A2(
+				$elm$core$Maybe$map,
+				tailFunc,
+				A2(
+					boundFunc,
+					tailArea,
+					A3($author$project$Main$getPercentiles, sample.n, model.trials, model.ys))));
+	});
+var $author$project$Main$getLeftTailBound = A2($author$project$Main$oneTailBound, $author$project$Main$leftTailBound, $author$project$Limits$Lower);
+var $author$project$Limits$Upper = function (a) {
+	return {$: 'Upper', a: a};
+};
 var $elm_community$list_extra$List$Extra$dropWhileRight = function (p) {
 	return A2(
 		$elm$core$List$foldr,
@@ -13262,6 +13276,22 @@ var $author$project$Main$rightTailBound = F2(
 						$elm$core$Basics$lt(oneMinus)),
 					percentiles)));
 	});
+var $author$project$Main$getRightTailBound = A2($author$project$Main$oneTailBound, $author$project$Main$rightTailBound, $author$project$Limits$Upper);
+var $author$project$Limits$TwoTail = F2(
+	function (a, b) {
+		return {$: 'TwoTail', a: a, b: b};
+	});
+var $author$project$Main$getTwoTailBound = F3(
+	function (model, level, sample) {
+		var tailArea = (1 - level) / 2;
+		var percentiles = A3($author$project$Main$getPercentiles, sample.n, model.trials, model.ys);
+		var right = A2($author$project$Main$rightTailBound, tailArea, percentiles);
+		var left = A2($author$project$Main$leftTailBound, tailArea, percentiles);
+		return A2(
+			$elm$core$Maybe$withDefault,
+			$author$project$Limits$NoBounds,
+			A3($elm$core$Maybe$map2, $author$project$Limits$TwoTail, left, right));
+	});
 var $author$project$Main$getBound = function (model) {
 	var _v0 = _Utils_Tuple3(model.originalSample, model.tail, model.level);
 	_v0$3:
@@ -13272,44 +13302,17 @@ var $author$project$Main$getBound = function (model) {
 					var sample = _v0.a.a;
 					var _v1 = _v0.b;
 					var level = _v0.c.a;
-					var tailArea = 1 - level;
-					return A2(
-						$elm$core$Maybe$withDefault,
-						$author$project$Limits$NoBounds,
-						A2(
-							$elm$core$Maybe$map,
-							$author$project$Limits$Lower,
-							A2(
-								$author$project$Main$leftTailBound,
-								tailArea,
-								A3($author$project$Main$getPercentiles, sample.n, model.trials, model.ys))));
+					return A3($author$project$Main$getLeftTailBound, model, level, sample);
 				case 'Right':
 					var sample = _v0.a.a;
 					var _v2 = _v0.b;
 					var level = _v0.c.a;
-					var tailArea = 1 - level;
-					return A2(
-						$elm$core$Maybe$withDefault,
-						$author$project$Limits$NoBounds,
-						A2(
-							$elm$core$Maybe$map,
-							$author$project$Limits$Upper,
-							A2(
-								$author$project$Main$rightTailBound,
-								tailArea,
-								A3($author$project$Main$getPercentiles, sample.n, model.trials, model.ys))));
+					return A3($author$project$Main$getRightTailBound, model, level, sample);
 				case 'Two':
 					var sample = _v0.a.a;
 					var _v3 = _v0.b;
 					var level = _v0.c.a;
-					var tailArea = (1 - level) / 2;
-					var percentiles = A3($author$project$Main$getPercentiles, sample.n, model.trials, model.ys);
-					var right = A2($author$project$Main$rightTailBound, tailArea, percentiles);
-					var left = A2($author$project$Main$leftTailBound, tailArea, percentiles);
-					return A2(
-						$elm$core$Maybe$withDefault,
-						$author$project$Limits$NoBounds,
-						A3($elm$core$Maybe$map2, $author$project$Limits$TwoTail, left, right));
+					return A3($author$project$Main$getTwoTailBound, model, level, sample);
 				default:
 					break _v0$3;
 			}
@@ -14060,15 +14063,6 @@ var $author$project$Main$update = F2(
 							])));
 		}
 	});
-var $elm$html$Html$div = _VirtualDom_node('div');
-var $elm$html$Html$Attributes$stringProperty = F2(
-	function (key, string) {
-		return A2(
-			_VirtualDom_property,
-			key,
-			$elm$json$Json$Encode$string(string));
-	});
-var $elm$html$Html$Attributes$id = $elm$html$Html$Attributes$stringProperty('id');
 var $rundis$elm_bootstrap$Bootstrap$Grid$Column = function (a) {
 	return {$: 'Column', a: a};
 };
@@ -14077,6 +14071,7 @@ var $rundis$elm_bootstrap$Bootstrap$Grid$col = F2(
 		return $rundis$elm_bootstrap$Bootstrap$Grid$Column(
 			{children: children, options: options});
 	});
+var $elm$html$Html$div = _VirtualDom_node('div');
 var $rundis$elm_bootstrap$Bootstrap$Form$applyModifier = F2(
 	function (modifier, options) {
 		var value = modifier.a;
@@ -14085,6 +14080,13 @@ var $rundis$elm_bootstrap$Bootstrap$Form$applyModifier = F2(
 			{
 				attributes: _Utils_ap(options.attributes, value)
 			});
+	});
+var $elm$html$Html$Attributes$stringProperty = F2(
+	function (key, string) {
+		return A2(
+			_VirtualDom_property,
+			key,
+			$elm$json$Json$Encode$string(string));
 	});
 var $elm$html$Html$Attributes$class = $elm$html$Html$Attributes$stringProperty('className');
 var $rundis$elm_bootstrap$Bootstrap$Form$defaultOptions = {attributes: _List_Nil};
@@ -14105,6 +14107,7 @@ var $rundis$elm_bootstrap$Bootstrap$Form$group = F2(
 			children);
 	});
 var $elm$html$Html$h4 = _VirtualDom_node('h4');
+var $elm$html$Html$Attributes$id = $elm$html$Html$Attributes$stringProperty('id');
 var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col = {$: 'Col'};
 var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Width = F2(
 	function (screenSize, columnCount) {
@@ -14910,73 +14913,6 @@ var $rundis$elm_bootstrap$Bootstrap$Grid$row = F2(
 			$rundis$elm_bootstrap$Bootstrap$Grid$Internal$rowAttributes(options),
 			A2($elm$core$List$map, $rundis$elm_bootstrap$Bootstrap$Grid$renderCol, cols));
 	});
-var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
-var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
-var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col10 = {$: 'Col10'};
-var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$ColWidth = function (a) {
-	return {$: 'ColWidth', a: a};
-};
-var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$width = F2(
-	function (size, count) {
-		return $rundis$elm_bootstrap$Bootstrap$Grid$Internal$ColWidth(
-			A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$Width, size, count));
-	});
-var $rundis$elm_bootstrap$Bootstrap$Grid$Col$xs10 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$XS, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col10);
-var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col12 = {$: 'Col12'};
-var $rundis$elm_bootstrap$Bootstrap$Grid$Col$xs12 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$XS, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col12);
-var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col2 = {$: 'Col2'};
-var $rundis$elm_bootstrap$Bootstrap$Grid$Col$xs2 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$XS, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col2);
-var $author$project$Main$sampleGrid = F3(
-	function (label, statistics, plotDiv) {
-		return A2(
-			$elm$html$Html$div,
-			_List_Nil,
-			_List_fromArray(
-				[
-					A2(
-					$rundis$elm_bootstrap$Bootstrap$Form$group,
-					_List_Nil,
-					_List_fromArray(
-						[
-							A2(
-							$elm$html$Html$h4,
-							_List_Nil,
-							_List_fromArray(
-								[
-									$elm$html$Html$text(label)
-								])),
-							A2(
-							$rundis$elm_bootstrap$Bootstrap$Grid$row,
-							_List_Nil,
-							_List_fromArray(
-								[
-									A2(
-									$rundis$elm_bootstrap$Bootstrap$Grid$col,
-									_List_fromArray(
-										[$rundis$elm_bootstrap$Bootstrap$Grid$Col$xs10]),
-									_List_fromArray(
-										[statistics])),
-									A2(
-									$rundis$elm_bootstrap$Bootstrap$Grid$col,
-									_List_fromArray(
-										[$rundis$elm_bootstrap$Bootstrap$Grid$Col$xs2]),
-									_List_Nil)
-								])),
-							A2(
-							$rundis$elm_bootstrap$Bootstrap$Grid$row,
-							_List_Nil,
-							_List_fromArray(
-								[
-									A2(
-									$rundis$elm_bootstrap$Bootstrap$Grid$col,
-									_List_fromArray(
-										[$rundis$elm_bootstrap$Bootstrap$Grid$Col$xs12]),
-									_List_fromArray(
-										[plotDiv]))
-								]))
-						]))
-				]));
-	});
 var $elm$html$Html$br = _VirtualDom_node('br');
 var $author$project$Binomial$roundFloat = F2(
 	function (digits, n) {
@@ -14989,61 +14925,123 @@ var $author$project$Binomial$roundFloat = F2(
 	});
 var $elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
 var $elm$html$Html$Attributes$style = $elm$virtual_dom$VirtualDom$style;
-var $author$project$Main$statisticView = function (maybeSuccess) {
-	if (maybeSuccess.$ === 'Nothing') {
-		return A2($elm$html$Html$div, _List_Nil, _List_Nil);
-	} else {
-		var success = maybeSuccess.a;
-		var prop = $elm$core$String$fromFloat(
-			A2($author$project$Binomial$roundFloat, 3, success.numSuccess / success.n));
-		var n = $elm$core$String$fromInt(success.n);
-		var lbl = success.successLbl;
-		var emptySample = !(success.numSuccess + success.numFailures);
-		var cnt = $elm$core$String$fromInt(success.numSuccess);
-		return emptySample ? A2($elm$html$Html$div, _List_Nil, _List_Nil) : A2(
-			$elm$html$Html$div,
-			_List_fromArray(
-				[
-					A2($elm$html$Html$Attributes$style, 'font-size', 'smaller')
-				]),
-			_List_fromArray(
-				[
-					$elm$html$Html$text('N = ' + n),
-					A2($elm$html$Html$br, _List_Nil, _List_Nil),
-					$elm$html$Html$text('Count(' + (lbl + (') = ' + cnt))),
-					A2($elm$html$Html$br, _List_Nil, _List_Nil),
-					$elm$html$Html$text('Prop(' + (lbl + (') = ' + prop))),
-					A2($elm$html$Html$br, _List_Nil, _List_Nil)
-				]));
-	}
-};
-var $author$project$Main$bootstrapSampleView = function (model) {
-	var _v0 = model.originalSample;
-	if (_v0.$ === 'Nothing') {
-		return A2($elm$html$Html$div, _List_Nil, _List_Nil);
-	} else {
-		return A3(
-			$author$project$Main$sampleGrid,
-			'Bootstrap Sample',
-			$author$project$Main$statisticView(model.bootstrapSample),
-			A2(
+var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
+var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
+var $author$project$Main$statisticView = F2(
+	function (dotSample, model) {
+		var _v0 = dotSample(model);
+		if (_v0.$ === 'Nothing') {
+			return A2($elm$html$Html$div, _List_Nil, _List_Nil);
+		} else {
+			var success = _v0.a;
+			var prop = $elm$core$String$fromFloat(
+				A2($author$project$Binomial$roundFloat, 3, success.numSuccess / success.n));
+			var n = $elm$core$String$fromInt(success.n);
+			var lbl = success.successLbl;
+			var emptySample = !(success.numSuccess + success.numFailures);
+			var cnt = $elm$core$String$fromInt(success.numSuccess);
+			return emptySample ? A2($elm$html$Html$div, _List_Nil, _List_Nil) : A2(
 				$elm$html$Html$div,
 				_List_fromArray(
 					[
-						$elm$html$Html$Attributes$id('bootstrapPlot')
+						A2($elm$html$Html$Attributes$style, 'font-size', 'smaller')
 					]),
-				_List_Nil));
-	}
+				_List_fromArray(
+					[
+						$elm$html$Html$text('N = ' + n),
+						A2($elm$html$Html$br, _List_Nil, _List_Nil),
+						$elm$html$Html$text('Count(' + (lbl + (') = ' + cnt))),
+						A2($elm$html$Html$br, _List_Nil, _List_Nil),
+						$elm$html$Html$text('Prop(' + (lbl + (') = ' + prop))),
+						A2($elm$html$Html$br, _List_Nil, _List_Nil)
+					]));
+		}
+	});
+var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col5 = {$: 'Col5'};
+var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$ColWidth = function (a) {
+	return {$: 'ColWidth', a: a};
 };
+var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$width = F2(
+	function (size, count) {
+		return $rundis$elm_bootstrap$Bootstrap$Grid$Internal$ColWidth(
+			A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$Width, size, count));
+	});
+var $rundis$elm_bootstrap$Bootstrap$Grid$Col$xs5 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$XS, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col5);
+var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col7 = {$: 'Col7'};
+var $rundis$elm_bootstrap$Bootstrap$Grid$Col$xs7 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$XS, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col7);
+var $author$project$Main$sampleGrid = F4(
+	function (dotSample, label, plotId, model) {
+		var _v0 = dotSample(model);
+		if (_v0.$ === 'Nothing') {
+			return A2($elm$html$Html$div, _List_Nil, _List_Nil);
+		} else {
+			return A2(
+				$elm$html$Html$div,
+				_List_Nil,
+				_List_fromArray(
+					[
+						A2(
+						$rundis$elm_bootstrap$Bootstrap$Form$group,
+						_List_Nil,
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$h4,
+								_List_Nil,
+								_List_fromArray(
+									[
+										$elm$html$Html$text(label)
+									])),
+								A2(
+								$rundis$elm_bootstrap$Bootstrap$Grid$row,
+								_List_Nil,
+								_List_fromArray(
+									[
+										A2(
+										$rundis$elm_bootstrap$Bootstrap$Grid$col,
+										_List_fromArray(
+											[$rundis$elm_bootstrap$Bootstrap$Grid$Col$xs7]),
+										_List_fromArray(
+											[
+												A2(
+												$elm$html$Html$div,
+												_List_fromArray(
+													[
+														$elm$html$Html$Attributes$id(plotId)
+													]),
+												_List_Nil)
+											])),
+										A2(
+										$rundis$elm_bootstrap$Bootstrap$Grid$col,
+										_List_fromArray(
+											[$rundis$elm_bootstrap$Bootstrap$Grid$Col$xs5]),
+										_List_fromArray(
+											[
+												A2($author$project$Main$statisticView, dotSample, model)
+											]))
+									]))
+							]))
+					]));
+		}
+	});
+var $author$project$Main$bootstrapSampleView = A3(
+	$author$project$Main$sampleGrid,
+	function ($) {
+		return $.bootstrapSample;
+	},
+	'Bootstrap Sample',
+	'bootstrapPlot');
 var $author$project$Main$Collect = function (a) {
 	return {$: 'Collect', a: a};
 };
 var $author$project$Main$Reset = {$: 'Reset'};
+var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col10 = {$: 'Col10'};
+var $rundis$elm_bootstrap$Bootstrap$Grid$Col$xs10 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$XS, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col10);
 var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col3 = {$: 'Col3'};
 var $rundis$elm_bootstrap$Bootstrap$Grid$Col$xs3 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$XS, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col3);
 var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col9 = {$: 'Col9'};
 var $rundis$elm_bootstrap$Bootstrap$Grid$Col$xs9 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$XS, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col9);
-var $author$project$Layout$collectButtonGrid = F3(
+var $author$project$Main$collectButtonGrid = F3(
 	function (reset, buttons, count) {
 		return A2(
 			$elm$html$Html$div,
@@ -15501,7 +15499,7 @@ var $author$project$CollectButtons$totalCollectedTxt = function (numTrials) {
 };
 var $author$project$Main$collectButtonView = function (model) {
 	return A3(
-		$author$project$Layout$collectButtonGrid,
+		$author$project$Main$collectButtonGrid,
 		$author$project$CollectButtons$resetButton($author$project$Main$Reset),
 		(!_Utils_eq(model.originalSample, $elm$core$Maybe$Nothing)) ? A2($author$project$CollectButtons$collectButtons, $author$project$Main$Collect, $author$project$Defaults$defaults.collectNs) : A2($elm$html$Html$div, _List_Nil, _List_Nil),
 		$author$project$CollectButtons$totalCollectedTxt(model.trials));
@@ -15686,7 +15684,7 @@ var $author$project$Main$tailButtonView = function (model) {
 					]),
 				_List_fromArray(
 					[
-						$elm$html$Html$text('Left-tail')
+						$elm$html$Html$text('Left')
 					])),
 				A3(
 				$rundis$elm_bootstrap$Bootstrap$ButtonGroup$radioButton,
@@ -15700,7 +15698,7 @@ var $author$project$Main$tailButtonView = function (model) {
 					]),
 				_List_fromArray(
 					[
-						$elm$html$Html$text('Right-tail')
+						$elm$html$Html$text('Right')
 					])),
 				A3(
 				$rundis$elm_bootstrap$Bootstrap$ButtonGroup$radioButton,
@@ -15714,7 +15712,7 @@ var $author$project$Main$tailButtonView = function (model) {
 					]),
 				_List_fromArray(
 					[
-						$elm$html$Html$text('Two-tail')
+						$elm$html$Html$text('Two')
 					]))
 			]));
 };
@@ -15725,17 +15723,10 @@ var $author$project$Main$confLimitsView = function (model) {
 		_List_fromArray(
 			[
 				A2(
-				$rundis$elm_bootstrap$Bootstrap$Grid$container,
+				$rundis$elm_bootstrap$Bootstrap$Form$group,
 				_List_Nil,
 				_List_fromArray(
 					[
-						A2(
-						$elm$html$Html$h4,
-						_List_Nil,
-						_List_fromArray(
-							[
-								$elm$html$Html$text('Confidence Interval')
-							])),
 						A2(
 						$rundis$elm_bootstrap$Bootstrap$Grid$row,
 						_List_Nil,
@@ -15744,91 +15735,109 @@ var $author$project$Main$confLimitsView = function (model) {
 								A2(
 								$rundis$elm_bootstrap$Bootstrap$Grid$col,
 								_List_fromArray(
-									[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm3]),
+									[$rundis$elm_bootstrap$Bootstrap$Grid$Col$xs9]),
 								_List_fromArray(
 									[
 										A2(
-										$elm$html$Html$b,
+										$elm$html$Html$h4,
 										_List_Nil,
 										_List_fromArray(
 											[
-												$elm$html$Html$text('Tail')
-											]))
-									])),
-								A2(
-								$rundis$elm_bootstrap$Bootstrap$Grid$col,
-								_List_fromArray(
-									[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm8]),
-								_List_fromArray(
-									[
-										$author$project$Main$tailButtonView(model)
-									])),
-								$rundis$elm_bootstrap$Bootstrap$Grid$colBreak(_List_Nil),
-								A2(
-								$rundis$elm_bootstrap$Bootstrap$Grid$col,
-								_List_fromArray(
-									[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm3]),
-								_List_fromArray(
-									[
+												$elm$html$Html$text('Confidence Interval')
+											])),
 										A2(
-										$elm$html$Html$b,
+										$elm$html$Html$div,
 										_List_Nil,
 										_List_fromArray(
 											[
-												$elm$html$Html$text('Level')
+												A2(
+												$rundis$elm_bootstrap$Bootstrap$Grid$container,
+												_List_Nil,
+												_List_fromArray(
+													[
+														A2(
+														$rundis$elm_bootstrap$Bootstrap$Grid$row,
+														_List_Nil,
+														_List_fromArray(
+															[
+																A2(
+																$rundis$elm_bootstrap$Bootstrap$Grid$col,
+																_List_fromArray(
+																	[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm3]),
+																_List_fromArray(
+																	[
+																		A2(
+																		$elm$html$Html$b,
+																		_List_Nil,
+																		_List_fromArray(
+																			[
+																				$elm$html$Html$text('Tail')
+																			]))
+																	])),
+																A2(
+																$rundis$elm_bootstrap$Bootstrap$Grid$col,
+																_List_fromArray(
+																	[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm8]),
+																_List_fromArray(
+																	[
+																		$author$project$Main$tailButtonView(model)
+																	])),
+																$rundis$elm_bootstrap$Bootstrap$Grid$colBreak(_List_Nil),
+																A2(
+																$rundis$elm_bootstrap$Bootstrap$Grid$col,
+																_List_fromArray(
+																	[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm3]),
+																_List_fromArray(
+																	[
+																		A2(
+																		$elm$html$Html$b,
+																		_List_Nil,
+																		_List_fromArray(
+																			[
+																				$elm$html$Html$text('Level')
+																			]))
+																	])),
+																A2(
+																$rundis$elm_bootstrap$Bootstrap$Grid$col,
+																_List_fromArray(
+																	[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm8]),
+																_List_fromArray(
+																	[
+																		$author$project$Main$levelButtonView(model)
+																	])),
+																$rundis$elm_bootstrap$Bootstrap$Grid$colBreak(_List_Nil),
+																A2(
+																$rundis$elm_bootstrap$Bootstrap$Grid$col,
+																_List_fromArray(
+																	[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm3]),
+																_List_fromArray(
+																	[
+																		A2(
+																		$elm$html$Html$b,
+																		_List_Nil,
+																		_List_fromArray(
+																			[
+																				$elm$html$Html$text('Interval')
+																			]))
+																	])),
+																A2(
+																$rundis$elm_bootstrap$Bootstrap$Grid$col,
+																_List_fromArray(
+																	[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm8]),
+																_List_fromArray(
+																	[
+																		$elm$html$Html$text(
+																		$author$project$Main$outputText(model))
+																	]))
+															]))
+													]))
 											]))
-									])),
-								A2(
-								$rundis$elm_bootstrap$Bootstrap$Grid$col,
-								_List_fromArray(
-									[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm8]),
-								_List_fromArray(
-									[
-										$author$project$Main$levelButtonView(model)
-									])),
-								$rundis$elm_bootstrap$Bootstrap$Grid$colBreak(_List_Nil),
-								A2(
-								$rundis$elm_bootstrap$Bootstrap$Grid$col,
-								_List_fromArray(
-									[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm3]),
-								_List_fromArray(
-									[
-										A2(
-										$elm$html$Html$b,
-										_List_Nil,
-										_List_fromArray(
-											[
-												$elm$html$Html$text('Interval')
-											]))
-									])),
-								A2(
-								$rundis$elm_bootstrap$Bootstrap$Grid$col,
-								_List_fromArray(
-									[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm8]),
-								_List_fromArray(
-									[
-										$elm$html$Html$text(
-										$author$project$Main$outputText(model))
 									]))
 							]))
 					]))
 			]));
 };
-var $author$project$Main$ChangeFileType = function (a) {
-	return {$: 'ChangeFileType', a: a};
-};
 var $author$project$Main$CloseModal = {$: 'CloseModal'};
-var $author$project$Main$CsvRequested = {$: 'CsvRequested'};
-var $author$project$Main$LoadUserData = {$: 'LoadUserData'};
-var $author$project$Main$SelectCount = function (a) {
-	return {$: 'SelectCount', a: a};
-};
-var $author$project$Main$SelectVariable = function (a) {
-	return {$: 'SelectVariable', a: a};
-};
-var $author$project$Main$ShowModal = {$: 'ShowModal'};
-var $rundis$elm_bootstrap$Bootstrap$Dropdown$AlignMenuRight = {$: 'AlignMenuRight'};
-var $rundis$elm_bootstrap$Bootstrap$Dropdown$alignMenuRight = $rundis$elm_bootstrap$Bootstrap$Dropdown$AlignMenuRight;
 var $rundis$elm_bootstrap$Bootstrap$Modal$Body = function (a) {
 	return {$: 'Body', a: a};
 };
@@ -15847,45 +15856,6 @@ var $rundis$elm_bootstrap$Bootstrap$Modal$body = F3(
 							{attributes: attributes, children: children}))
 				}));
 	});
-var $rundis$elm_bootstrap$Bootstrap$Table$Bordered = {$: 'Bordered'};
-var $rundis$elm_bootstrap$Bootstrap$Table$bordered = $rundis$elm_bootstrap$Bootstrap$Table$Bordered;
-var $rundis$elm_bootstrap$Bootstrap$Form$Col = function (a) {
-	return {$: 'Col', a: a};
-};
-var $rundis$elm_bootstrap$Bootstrap$Form$col = F2(
-	function (options, children) {
-		return $rundis$elm_bootstrap$Bootstrap$Form$Col(
-			{children: children, elemFn: $elm$html$Html$div, options: options});
-	});
-var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$ColAttrs = function (a) {
-	return {$: 'ColAttrs', a: a};
-};
-var $rundis$elm_bootstrap$Bootstrap$Grid$Col$attrs = function (attrs_) {
-	return $rundis$elm_bootstrap$Bootstrap$Grid$Internal$ColAttrs(attrs_);
-};
-var $rundis$elm_bootstrap$Bootstrap$Form$colLabel = F2(
-	function (options, children) {
-		return $rundis$elm_bootstrap$Bootstrap$Form$Col(
-			{
-				children: children,
-				elemFn: $elm$html$Html$label,
-				options: A2(
-					$elm$core$List$cons,
-					$rundis$elm_bootstrap$Bootstrap$Grid$Col$attrs(
-						_List_fromArray(
-							[
-								$elm$html$Html$Attributes$class('col-form-label')
-							])),
-					options)
-			});
-	});
-var $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$Config = function (a) {
-	return {$: 'Config', a: a};
-};
-var $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$config = function (input_) {
-	return $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$Config(
-		{attributes: _List_Nil, input: input_, predecessors: _List_Nil, size: $elm$core$Maybe$Nothing, successors: _List_Nil});
-};
 var $rundis$elm_bootstrap$Bootstrap$Modal$config = function (closeMsg) {
 	return $rundis$elm_bootstrap$Bootstrap$Modal$Config(
 		{
@@ -15897,64 +15867,176 @@ var $rundis$elm_bootstrap$Bootstrap$Modal$config = function (closeMsg) {
 			withAnimation: $elm$core$Maybe$Nothing
 		});
 };
-var $rundis$elm_bootstrap$Bootstrap$Form$Select$Custom = {$: 'Custom'};
-var $rundis$elm_bootstrap$Bootstrap$Form$Select$Select = function (a) {
-	return {$: 'Select', a: a};
+var $rundis$elm_bootstrap$Bootstrap$Internal$Button$Outlined = function (a) {
+	return {$: 'Outlined', a: a};
 };
-var $rundis$elm_bootstrap$Bootstrap$Form$Select$create = F2(
-	function (options, items) {
-		return $rundis$elm_bootstrap$Bootstrap$Form$Select$Select(
-			{items: items, options: options});
+var $rundis$elm_bootstrap$Bootstrap$Button$outlinePrimary = $rundis$elm_bootstrap$Bootstrap$Internal$Button$Coloring(
+	$rundis$elm_bootstrap$Bootstrap$Internal$Button$Outlined($rundis$elm_bootstrap$Bootstrap$Internal$Button$Primary));
+var $rundis$elm_bootstrap$Bootstrap$Dropdown$DropdownToggle = function (a) {
+	return {$: 'DropdownToggle', a: a};
+};
+var $elm$json$Json$Decode$andThen = _Json_andThen;
+var $rundis$elm_bootstrap$Bootstrap$Dropdown$Open = {$: 'Open'};
+var $rundis$elm_bootstrap$Bootstrap$Dropdown$nextStatus = function (status) {
+	switch (status.$) {
+		case 'Open':
+			return $rundis$elm_bootstrap$Bootstrap$Dropdown$Closed;
+		case 'ListenClicks':
+			return $rundis$elm_bootstrap$Bootstrap$Dropdown$Closed;
+		default:
+			return $rundis$elm_bootstrap$Bootstrap$Dropdown$Open;
+	}
+};
+var $elm$json$Json$Decode$map3 = _Json_map3;
+var $elm$json$Json$Decode$field = _Json_decodeField;
+var $elm$json$Json$Decode$float = _Json_decodeFloat;
+var $rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$offsetHeight = A2($elm$json$Json$Decode$field, 'offsetHeight', $elm$json$Json$Decode$float);
+var $rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$offsetWidth = A2($elm$json$Json$Decode$field, 'offsetWidth', $elm$json$Json$Decode$float);
+var $elm$json$Json$Decode$map4 = _Json_map4;
+var $rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$offsetLeft = A2($elm$json$Json$Decode$field, 'offsetLeft', $elm$json$Json$Decode$float);
+var $elm$json$Json$Decode$null = _Json_decodeNull;
+var $elm$json$Json$Decode$oneOf = _Json_oneOf;
+var $rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$offsetParent = F2(
+	function (x, decoder) {
+		return $elm$json$Json$Decode$oneOf(
+			_List_fromArray(
+				[
+					A2(
+					$elm$json$Json$Decode$field,
+					'offsetParent',
+					$elm$json$Json$Decode$null(x)),
+					A2($elm$json$Json$Decode$field, 'offsetParent', decoder)
+				]));
 	});
-var $elm$html$Html$select = _VirtualDom_node('select');
-var $rundis$elm_bootstrap$Bootstrap$Form$Select$applyModifier = F2(
-	function (modifier, options) {
-		switch (modifier.$) {
-			case 'Size':
-				var size_ = modifier.a;
-				return _Utils_update(
-					options,
-					{
-						size: $elm$core$Maybe$Just(size_)
-					});
-			case 'Id':
-				var id_ = modifier.a;
-				return _Utils_update(
-					options,
-					{
-						id: $elm$core$Maybe$Just(id_)
-					});
-			case 'Custom':
-				return _Utils_update(
-					options,
-					{custom: true});
-			case 'Disabled':
-				var val = modifier.a;
-				return _Utils_update(
-					options,
-					{disabled: val});
-			case 'OnChange':
-				var onChange_ = modifier.a;
-				return _Utils_update(
-					options,
-					{
-						onChange: $elm$core$Maybe$Just(onChange_)
-					});
-			case 'Validation':
-				var validation_ = modifier.a;
-				return _Utils_update(
-					options,
-					{
-						validation: $elm$core$Maybe$Just(validation_)
-					});
-			default:
-				var attrs_ = modifier.a;
-				return _Utils_update(
-					options,
-					{
-						attributes: _Utils_ap(options.attributes, attrs_)
-					});
-		}
+var $rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$offsetTop = A2($elm$json$Json$Decode$field, 'offsetTop', $elm$json$Json$Decode$float);
+var $rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$scrollLeft = A2($elm$json$Json$Decode$field, 'scrollLeft', $elm$json$Json$Decode$float);
+var $rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$scrollTop = A2($elm$json$Json$Decode$field, 'scrollTop', $elm$json$Json$Decode$float);
+var $rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$position = F2(
+	function (x, y) {
+		return A2(
+			$elm$json$Json$Decode$andThen,
+			function (_v0) {
+				var x_ = _v0.a;
+				var y_ = _v0.b;
+				return A2(
+					$rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$offsetParent,
+					_Utils_Tuple2(x_, y_),
+					A2($rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$position, x_, y_));
+			},
+			A5(
+				$elm$json$Json$Decode$map4,
+				F4(
+					function (scrollLeft_, scrollTop_, offsetLeft_, offsetTop_) {
+						return _Utils_Tuple2((x + offsetLeft_) - scrollLeft_, (y + offsetTop_) - scrollTop_);
+					}),
+				$rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$scrollLeft,
+				$rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$scrollTop,
+				$rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$offsetLeft,
+				$rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$offsetTop));
+	});
+var $rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$boundingArea = A4(
+	$elm$json$Json$Decode$map3,
+	F3(
+		function (_v0, width, height) {
+			var x = _v0.a;
+			var y = _v0.b;
+			return {height: height, left: x, top: y, width: width};
+		}),
+	A2($rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$position, 0, 0),
+	$rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$offsetWidth,
+	$rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$offsetHeight);
+var $elm$json$Json$Decode$at = F2(
+	function (fields, decoder) {
+		return A3($elm$core$List$foldr, $elm$json$Json$Decode$field, decoder, fields);
+	});
+var $rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$childNode = function (idx) {
+	return $elm$json$Json$Decode$at(
+		_List_fromArray(
+			[
+				'childNodes',
+				$elm$core$String$fromInt(idx)
+			]));
+};
+var $rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$nextSibling = function (decoder) {
+	return A2($elm$json$Json$Decode$field, 'nextSibling', decoder);
+};
+var $elm$json$Json$Decode$string = _Json_decodeString;
+var $rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$className = A2(
+	$elm$json$Json$Decode$at,
+	_List_fromArray(
+		['className']),
+	$elm$json$Json$Decode$string);
+var $elm$json$Json$Decode$fail = _Json_fail;
+var $rundis$elm_bootstrap$Bootstrap$Dropdown$isToggle = A2(
+	$elm$json$Json$Decode$andThen,
+	function (_class) {
+		return A2($elm$core$String$contains, 'dropdown-toggle', _class) ? $elm$json$Json$Decode$succeed(true) : $elm$json$Json$Decode$succeed(false);
+	},
+	$rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$className);
+var $rundis$elm_bootstrap$Bootstrap$Dropdown$toggler = F2(
+	function (path, decoder) {
+		return $elm$json$Json$Decode$oneOf(
+			_List_fromArray(
+				[
+					A2(
+					$elm$json$Json$Decode$andThen,
+					function (res) {
+						return res ? A2($elm$json$Json$Decode$at, path, decoder) : $elm$json$Json$Decode$fail('');
+					},
+					A2($elm$json$Json$Decode$at, path, $rundis$elm_bootstrap$Bootstrap$Dropdown$isToggle)),
+					A2(
+					$elm$json$Json$Decode$andThen,
+					function (_v0) {
+						return A2(
+							$rundis$elm_bootstrap$Bootstrap$Dropdown$toggler,
+							_Utils_ap(
+								path,
+								_List_fromArray(
+									['parentElement'])),
+							decoder);
+					},
+					A2(
+						$elm$json$Json$Decode$at,
+						_Utils_ap(
+							path,
+							_List_fromArray(
+								['parentElement'])),
+						$rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$className)),
+					$elm$json$Json$Decode$fail('No toggler found')
+				]));
+	});
+var $rundis$elm_bootstrap$Bootstrap$Dropdown$sizeDecoder = A3(
+	$elm$json$Json$Decode$map2,
+	$elm$core$Tuple$pair,
+	A2(
+		$rundis$elm_bootstrap$Bootstrap$Dropdown$toggler,
+		_List_fromArray(
+			['target']),
+		$rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$boundingArea),
+	A2(
+		$rundis$elm_bootstrap$Bootstrap$Dropdown$toggler,
+		_List_fromArray(
+			['target']),
+		$rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$nextSibling(
+			A2($rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$childNode, 0, $rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$boundingArea))));
+var $rundis$elm_bootstrap$Bootstrap$Dropdown$clickHandler = F2(
+	function (toMsg, state) {
+		var status = state.a.status;
+		return A2(
+			$elm$json$Json$Decode$andThen,
+			function (_v0) {
+				var b = _v0.a;
+				var m = _v0.b;
+				return $elm$json$Json$Decode$succeed(
+					toMsg(
+						$rundis$elm_bootstrap$Bootstrap$Dropdown$State(
+							{
+								menuSize: m,
+								status: $rundis$elm_bootstrap$Bootstrap$Dropdown$nextStatus(status),
+								toggleSize: b
+							})));
+			},
+			$rundis$elm_bootstrap$Bootstrap$Dropdown$sizeDecoder);
 	});
 var $elm$virtual_dom$VirtualDom$Normal = function (a) {
 	return {$: 'Normal', a: a};
@@ -15966,96 +16048,34 @@ var $elm$html$Html$Events$on = F2(
 			event,
 			$elm$virtual_dom$VirtualDom$Normal(decoder));
 	});
-var $elm$json$Json$Decode$field = _Json_decodeField;
-var $elm$json$Json$Decode$at = F2(
-	function (fields, decoder) {
-		return A3($elm$core$List$foldr, $elm$json$Json$Decode$field, decoder, fields);
-	});
-var $elm$json$Json$Decode$string = _Json_decodeString;
-var $elm$html$Html$Events$targetValue = A2(
-	$elm$json$Json$Decode$at,
-	_List_fromArray(
-		['target', 'value']),
-	$elm$json$Json$Decode$string);
-var $rundis$elm_bootstrap$Bootstrap$Form$Select$customEventOnChange = function (tagger) {
-	return A2(
-		$elm$html$Html$Events$on,
-		'change',
-		A2($elm$json$Json$Decode$map, tagger, $elm$html$Html$Events$targetValue));
-};
-var $rundis$elm_bootstrap$Bootstrap$Form$Select$defaultOptions = {attributes: _List_Nil, custom: false, disabled: false, id: $elm$core$Maybe$Nothing, onChange: $elm$core$Maybe$Nothing, size: $elm$core$Maybe$Nothing, validation: $elm$core$Maybe$Nothing};
-var $elm$core$Basics$not = _Basics_not;
-var $rundis$elm_bootstrap$Bootstrap$Form$Select$sizeAttribute = F2(
-	function (isCustom, size_) {
-		var prefix = isCustom ? 'custom-select-' : 'form-control-';
+var $rundis$elm_bootstrap$Bootstrap$Dropdown$togglePrivate = F4(
+	function (buttonOptions, children, toggleMsg, state) {
 		return A2(
-			$elm$core$Maybe$map,
-			function (s) {
-				return $elm$html$Html$Attributes$class(
-					_Utils_ap(prefix, s));
-			},
-			$rundis$elm_bootstrap$Bootstrap$General$Internal$screenSizeOption(size_));
-	});
-var $rundis$elm_bootstrap$Bootstrap$Form$FormInternal$validationToString = function (validation) {
-	if (validation.$ === 'Success') {
-		return 'is-valid';
-	} else {
-		return 'is-invalid';
-	}
-};
-var $rundis$elm_bootstrap$Bootstrap$Form$Select$validationAttribute = function (validation_) {
-	return $elm$html$Html$Attributes$class(
-		$rundis$elm_bootstrap$Bootstrap$Form$FormInternal$validationToString(validation_));
-};
-var $rundis$elm_bootstrap$Bootstrap$Form$Select$toAttributes = function (modifiers) {
-	var options = A3($elm$core$List$foldl, $rundis$elm_bootstrap$Bootstrap$Form$Select$applyModifier, $rundis$elm_bootstrap$Bootstrap$Form$Select$defaultOptions, modifiers);
-	return _Utils_ap(
-		_List_fromArray(
-			[
-				$elm$html$Html$Attributes$classList(
+			$elm$html$Html$button,
+			_Utils_ap(
+				$rundis$elm_bootstrap$Bootstrap$Internal$Button$buttonAttributes(buttonOptions),
 				_List_fromArray(
 					[
-						_Utils_Tuple2('form-control', !options.custom),
-						_Utils_Tuple2('custom-select', options.custom)
-					])),
-				$elm$html$Html$Attributes$disabled(options.disabled)
-			]),
-		_Utils_ap(
-			A2(
-				$elm$core$List$filterMap,
-				$elm$core$Basics$identity,
-				_List_fromArray(
-					[
-						A2($elm$core$Maybe$map, $elm$html$Html$Attributes$id, options.id),
+						$elm$html$Html$Attributes$class('dropdown-toggle'),
+						$elm$html$Html$Attributes$type_('button'),
 						A2(
-						$elm$core$Maybe$andThen,
-						$rundis$elm_bootstrap$Bootstrap$Form$Select$sizeAttribute(options.custom),
-						options.size),
-						A2($elm$core$Maybe$map, $rundis$elm_bootstrap$Bootstrap$Form$Select$customEventOnChange, options.onChange),
-						A2($elm$core$Maybe$map, $rundis$elm_bootstrap$Bootstrap$Form$Select$validationAttribute, options.validation)
+						$elm$html$Html$Events$on,
+						'click',
+						A2($rundis$elm_bootstrap$Bootstrap$Dropdown$clickHandler, toggleMsg, state))
 					])),
-			options.attributes));
-};
-var $rundis$elm_bootstrap$Bootstrap$Form$Select$view = function (_v0) {
-	var options = _v0.a.options;
-	var items = _v0.a.items;
+			children);
+	});
+var $rundis$elm_bootstrap$Bootstrap$Dropdown$toggle = F2(
+	function (buttonOptions, children) {
+		return $rundis$elm_bootstrap$Bootstrap$Dropdown$DropdownToggle(
+			A2($rundis$elm_bootstrap$Bootstrap$Dropdown$togglePrivate, buttonOptions, children));
+	});
+var $author$project$Main$dataButtonToggle = function (_v0) {
 	return A2(
-		$elm$html$Html$select,
-		$rundis$elm_bootstrap$Bootstrap$Form$Select$toAttributes(options),
-		A2(
-			$elm$core$List$map,
-			function (_v1) {
-				var e = _v1.a;
-				return e;
-			},
-			items));
-};
-var $rundis$elm_bootstrap$Bootstrap$Form$Select$custom = function (options) {
-	return A2(
-		$elm$core$Basics$composeL,
-		$rundis$elm_bootstrap$Bootstrap$Form$Select$view,
-		$rundis$elm_bootstrap$Bootstrap$Form$Select$create(
-			A2($elm$core$List$cons, $rundis$elm_bootstrap$Bootstrap$Form$Select$Custom, options)));
+		$rundis$elm_bootstrap$Bootstrap$Dropdown$toggle,
+		_List_fromArray(
+			[$rundis$elm_bootstrap$Bootstrap$Button$outlinePrimary, $rundis$elm_bootstrap$Bootstrap$Button$small]),
+		_List_Nil);
 };
 var $author$project$Main$dataPlaceholder = function (model) {
 	var _v0 = model.selected;
@@ -16066,23 +16086,73 @@ var $author$project$Main$dataPlaceholder = function (model) {
 		return data.name;
 	}
 };
-var $rundis$elm_bootstrap$Bootstrap$Internal$Button$Disabled = function (a) {
-	return {$: 'Disabled', a: a};
+var $author$project$Main$ChangeData = function (a) {
+	return {$: 'ChangeData', a: a};
 };
-var $rundis$elm_bootstrap$Bootstrap$Button$disabled = function (disabled_) {
-	return $rundis$elm_bootstrap$Bootstrap$Internal$Button$Disabled(disabled_);
+var $rundis$elm_bootstrap$Bootstrap$Dropdown$DropdownItem = function (a) {
+	return {$: 'DropdownItem', a: a};
+};
+var $rundis$elm_bootstrap$Bootstrap$Dropdown$buttonItem = F2(
+	function (attributes, children) {
+		return $rundis$elm_bootstrap$Bootstrap$Dropdown$DropdownItem(
+			A2(
+				$elm$html$Html$button,
+				_Utils_ap(
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$type_('button'),
+							$elm$html$Html$Attributes$class('dropdown-item')
+						]),
+					attributes),
+				children));
+	});
+var $elm$html$Html$Events$onClick = function (msg) {
+	return A2(
+		$elm$html$Html$Events$on,
+		'click',
+		$elm$json$Json$Decode$succeed(msg));
+};
+var $author$project$Main$dropdownItem = F2(
+	function (msg, txt) {
+		return A2(
+			$rundis$elm_bootstrap$Bootstrap$Dropdown$buttonItem,
+			_List_fromArray(
+				[
+					$elm$html$Html$Events$onClick(
+					msg(txt)),
+					A2($elm$html$Html$Attributes$style, 'width', 'max-content !important')
+				]),
+			_List_fromArray(
+				[
+					$elm$html$Html$text(txt)
+				]));
+	});
+var $author$project$Main$dropdownDataItem = $author$project$Main$dropdownItem($author$project$Main$ChangeData);
+var $author$project$Main$dropdownData = function (model) {
+	return A2(
+		$elm$core$List$map,
+		$author$project$Main$dropdownDataItem,
+		A2(
+			$elm$core$List$map,
+			function ($) {
+				return $.name;
+			},
+			model.datasets));
+};
+var $rundis$elm_bootstrap$Bootstrap$Dropdown$AlignMenuRight = {$: 'AlignMenuRight'};
+var $rundis$elm_bootstrap$Bootstrap$Dropdown$alignMenuRight = $rundis$elm_bootstrap$Bootstrap$Dropdown$AlignMenuRight;
+var $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$Config = function (a) {
+	return {$: 'Config', a: a};
+};
+var $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$config = function (input_) {
+	return $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$Config(
+		{attributes: _List_Nil, input: input_, predecessors: _List_Nil, size: $elm$core$Maybe$Nothing, successors: _List_Nil});
 };
 var $rundis$elm_bootstrap$Bootstrap$Form$Input$Disabled = function (a) {
 	return {$: 'Disabled', a: a};
 };
 var $rundis$elm_bootstrap$Bootstrap$Form$Input$disabled = function (disabled_) {
 	return $rundis$elm_bootstrap$Bootstrap$Form$Input$Disabled(disabled_);
-};
-var $rundis$elm_bootstrap$Bootstrap$Form$Select$Disabled = function (a) {
-	return {$: 'Disabled', a: a};
-};
-var $rundis$elm_bootstrap$Bootstrap$Form$Select$disabled = function (disabled_) {
-	return $rundis$elm_bootstrap$Bootstrap$Form$Select$Disabled(disabled_);
 };
 var $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$Addon = function (a) {
 	return {$: 'Addon', a: a};
@@ -16298,83 +16368,388 @@ var $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$dropdown = F2(
 		return $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$Addon(
 			A2($rundis$elm_bootstrap$Bootstrap$Dropdown$dropdown, state, conf));
 	});
-var $author$project$Main$ChangeData = function (a) {
-	return {$: 'ChangeData', a: a};
+var $rundis$elm_bootstrap$Bootstrap$Form$Input$Placeholder = function (a) {
+	return {$: 'Placeholder', a: a};
 };
-var $rundis$elm_bootstrap$Bootstrap$Dropdown$DropdownItem = function (a) {
-	return {$: 'DropdownItem', a: a};
+var $rundis$elm_bootstrap$Bootstrap$Form$Input$placeholder = function (value_) {
+	return $rundis$elm_bootstrap$Bootstrap$Form$Input$Placeholder(value_);
 };
-var $rundis$elm_bootstrap$Bootstrap$Dropdown$buttonItem = F2(
+var $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$predecessors = F2(
+	function (addons, _v0) {
+		var conf = _v0.a;
+		return $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$Config(
+			_Utils_update(
+				conf,
+				{predecessors: addons}));
+	});
+var $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$small = function (_v0) {
+	var conf = _v0.a;
+	return $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$Config(
+		_Utils_update(
+			conf,
+			{
+				size: $elm$core$Maybe$Just($rundis$elm_bootstrap$Bootstrap$General$Internal$SM)
+			}));
+};
+var $elm$html$Html$span = _VirtualDom_node('span');
+var $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$span = F2(
 	function (attributes, children) {
-		return $rundis$elm_bootstrap$Bootstrap$Dropdown$DropdownItem(
+		return $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$Addon(
 			A2(
-				$elm$html$Html$button,
-				_Utils_ap(
-					_List_fromArray(
-						[
-							$elm$html$Html$Attributes$type_('button'),
-							$elm$html$Html$Attributes$class('dropdown-item')
-						]),
+				$elm$html$Html$span,
+				A2(
+					$elm$core$List$cons,
+					$elm$html$Html$Attributes$class('input-group-text'),
 					attributes),
 				children));
 	});
-var $elm$html$Html$Events$onClick = function (msg) {
-	return A2(
-		$elm$html$Html$Events$on,
-		'click',
-		$elm$json$Json$Decode$succeed(msg));
-};
-var $author$project$Main$dropdownItem = F2(
-	function (msg, txt) {
-		return A2(
-			$rundis$elm_bootstrap$Bootstrap$Dropdown$buttonItem,
-			_List_fromArray(
-				[
-					$elm$html$Html$Events$onClick(
-					msg(txt)),
-					A2($elm$html$Html$Attributes$style, 'width', 'max-content !important')
-				]),
-			_List_fromArray(
-				[
-					$elm$html$Html$text(txt)
-				]));
+var $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$successors = F2(
+	function (addons, _v0) {
+		var conf = _v0.a;
+		return $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$Config(
+			_Utils_update(
+				conf,
+				{successors: addons}));
 	});
-var $author$project$Main$dropdownDataItem = $author$project$Main$dropdownItem($author$project$Main$ChangeData);
-var $author$project$Main$dropdownData = function (datasets) {
-	return A2(
-		$elm$core$List$map,
-		$author$project$Main$dropdownDataItem,
-		A2(
-			$elm$core$List$map,
-			function ($) {
-				return $.name;
-			},
-			datasets));
+var $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$Input = function (a) {
+	return {$: 'Input', a: a};
 };
-var $author$project$Main$ChangeSuccess = function (a) {
-	return {$: 'ChangeSuccess', a: a};
+var $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$input = F2(
+	function (inputFn, options) {
+		return $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$Input(
+			inputFn(options));
+	});
+var $rundis$elm_bootstrap$Bootstrap$Form$Input$Text = {$: 'Text'};
+var $rundis$elm_bootstrap$Bootstrap$Form$Input$Input = function (a) {
+	return {$: 'Input', a: a};
 };
-var $author$project$Main$dropdownSuccessItem = $author$project$Main$dropdownItem($author$project$Main$ChangeSuccess);
-var $author$project$DataSet$getLabels = function (data) {
-	return A2(
-		$elm$core$List$map,
-		function ($) {
-			return $.label;
-		},
-		data.frequencies);
+var $rundis$elm_bootstrap$Bootstrap$Form$Input$Type = function (a) {
+	return {$: 'Type', a: a};
 };
-var $author$project$Main$dropdownSuccess = function (model) {
-	var _v0 = model.selected;
-	if (_v0.$ === 'Nothing') {
-		return _List_Nil;
-	} else {
-		var d = _v0.a;
+var $rundis$elm_bootstrap$Bootstrap$Form$Input$create = F2(
+	function (tipe, options) {
+		return $rundis$elm_bootstrap$Bootstrap$Form$Input$Input(
+			{
+				options: A2(
+					$elm$core$List$cons,
+					$rundis$elm_bootstrap$Bootstrap$Form$Input$Type(tipe),
+					options)
+			});
+	});
+var $rundis$elm_bootstrap$Bootstrap$Form$Input$applyModifier = F2(
+	function (modifier, options) {
+		switch (modifier.$) {
+			case 'Size':
+				var size_ = modifier.a;
+				return _Utils_update(
+					options,
+					{
+						size: $elm$core$Maybe$Just(size_)
+					});
+			case 'Id':
+				var id_ = modifier.a;
+				return _Utils_update(
+					options,
+					{
+						id: $elm$core$Maybe$Just(id_)
+					});
+			case 'Type':
+				var tipe = modifier.a;
+				return _Utils_update(
+					options,
+					{tipe: tipe});
+			case 'Disabled':
+				var val = modifier.a;
+				return _Utils_update(
+					options,
+					{disabled: val});
+			case 'Value':
+				var value_ = modifier.a;
+				return _Utils_update(
+					options,
+					{
+						value: $elm$core$Maybe$Just(value_)
+					});
+			case 'Placeholder':
+				var value_ = modifier.a;
+				return _Utils_update(
+					options,
+					{
+						placeholder: $elm$core$Maybe$Just(value_)
+					});
+			case 'OnInput':
+				var onInput_ = modifier.a;
+				return _Utils_update(
+					options,
+					{
+						onInput: $elm$core$Maybe$Just(onInput_)
+					});
+			case 'Validation':
+				var validation_ = modifier.a;
+				return _Utils_update(
+					options,
+					{
+						validation: $elm$core$Maybe$Just(validation_)
+					});
+			case 'Readonly':
+				var val = modifier.a;
+				return _Utils_update(
+					options,
+					{readonly: val});
+			case 'PlainText':
+				var val = modifier.a;
+				return _Utils_update(
+					options,
+					{plainText: val});
+			default:
+				var attrs_ = modifier.a;
+				return _Utils_update(
+					options,
+					{
+						attributes: _Utils_ap(options.attributes, attrs_)
+					});
+		}
+	});
+var $rundis$elm_bootstrap$Bootstrap$Form$Input$defaultOptions = {attributes: _List_Nil, disabled: false, id: $elm$core$Maybe$Nothing, onInput: $elm$core$Maybe$Nothing, placeholder: $elm$core$Maybe$Nothing, plainText: false, readonly: false, size: $elm$core$Maybe$Nothing, tipe: $rundis$elm_bootstrap$Bootstrap$Form$Input$Text, validation: $elm$core$Maybe$Nothing, value: $elm$core$Maybe$Nothing};
+var $elm$html$Html$Events$alwaysStop = function (x) {
+	return _Utils_Tuple2(x, true);
+};
+var $elm$virtual_dom$VirtualDom$MayStopPropagation = function (a) {
+	return {$: 'MayStopPropagation', a: a};
+};
+var $elm$html$Html$Events$stopPropagationOn = F2(
+	function (event, decoder) {
 		return A2(
-			$elm$core$List$map,
-			$author$project$Main$dropdownSuccessItem,
-			$author$project$DataSet$getLabels(d));
+			$elm$virtual_dom$VirtualDom$on,
+			event,
+			$elm$virtual_dom$VirtualDom$MayStopPropagation(decoder));
+	});
+var $elm$html$Html$Events$targetValue = A2(
+	$elm$json$Json$Decode$at,
+	_List_fromArray(
+		['target', 'value']),
+	$elm$json$Json$Decode$string);
+var $elm$html$Html$Events$onInput = function (tagger) {
+	return A2(
+		$elm$html$Html$Events$stopPropagationOn,
+		'input',
+		A2(
+			$elm$json$Json$Decode$map,
+			$elm$html$Html$Events$alwaysStop,
+			A2($elm$json$Json$Decode$map, tagger, $elm$html$Html$Events$targetValue)));
+};
+var $elm$html$Html$Attributes$placeholder = $elm$html$Html$Attributes$stringProperty('placeholder');
+var $elm$html$Html$Attributes$readonly = $elm$html$Html$Attributes$boolProperty('readOnly');
+var $rundis$elm_bootstrap$Bootstrap$Form$Input$sizeAttribute = function (size) {
+	return A2(
+		$elm$core$Maybe$map,
+		function (s) {
+			return $elm$html$Html$Attributes$class('form-control-' + s);
+		},
+		$rundis$elm_bootstrap$Bootstrap$General$Internal$screenSizeOption(size));
+};
+var $rundis$elm_bootstrap$Bootstrap$Form$Input$typeAttribute = function (inputType) {
+	return $elm$html$Html$Attributes$type_(
+		function () {
+			switch (inputType.$) {
+				case 'Text':
+					return 'text';
+				case 'Password':
+					return 'password';
+				case 'DatetimeLocal':
+					return 'datetime-local';
+				case 'Date':
+					return 'date';
+				case 'Month':
+					return 'month';
+				case 'Time':
+					return 'time';
+				case 'Week':
+					return 'week';
+				case 'Number':
+					return 'number';
+				case 'Email':
+					return 'email';
+				case 'Url':
+					return 'url';
+				case 'Search':
+					return 'search';
+				case 'Tel':
+					return 'tel';
+				default:
+					return 'color';
+			}
+		}());
+};
+var $rundis$elm_bootstrap$Bootstrap$Form$FormInternal$validationToString = function (validation) {
+	if (validation.$ === 'Success') {
+		return 'is-valid';
+	} else {
+		return 'is-invalid';
 	}
 };
+var $rundis$elm_bootstrap$Bootstrap$Form$Input$validationAttribute = function (validation) {
+	return $elm$html$Html$Attributes$class(
+		$rundis$elm_bootstrap$Bootstrap$Form$FormInternal$validationToString(validation));
+};
+var $elm$html$Html$Attributes$value = $elm$html$Html$Attributes$stringProperty('value');
+var $rundis$elm_bootstrap$Bootstrap$Form$Input$toAttributes = function (modifiers) {
+	var options = A3($elm$core$List$foldl, $rundis$elm_bootstrap$Bootstrap$Form$Input$applyModifier, $rundis$elm_bootstrap$Bootstrap$Form$Input$defaultOptions, modifiers);
+	return _Utils_ap(
+		_List_fromArray(
+			[
+				$elm$html$Html$Attributes$class(
+				options.plainText ? 'form-control-plaintext' : 'form-control'),
+				$elm$html$Html$Attributes$disabled(options.disabled),
+				$elm$html$Html$Attributes$readonly(options.readonly || options.plainText),
+				$rundis$elm_bootstrap$Bootstrap$Form$Input$typeAttribute(options.tipe)
+			]),
+		_Utils_ap(
+			A2(
+				$elm$core$List$filterMap,
+				$elm$core$Basics$identity,
+				_List_fromArray(
+					[
+						A2($elm$core$Maybe$map, $elm$html$Html$Attributes$id, options.id),
+						A2($elm$core$Maybe$andThen, $rundis$elm_bootstrap$Bootstrap$Form$Input$sizeAttribute, options.size),
+						A2($elm$core$Maybe$map, $elm$html$Html$Attributes$value, options.value),
+						A2($elm$core$Maybe$map, $elm$html$Html$Attributes$placeholder, options.placeholder),
+						A2($elm$core$Maybe$map, $elm$html$Html$Events$onInput, options.onInput),
+						A2($elm$core$Maybe$map, $rundis$elm_bootstrap$Bootstrap$Form$Input$validationAttribute, options.validation)
+					])),
+			options.attributes));
+};
+var $rundis$elm_bootstrap$Bootstrap$Form$Input$view = function (_v0) {
+	var options = _v0.a.options;
+	return A2(
+		$elm$html$Html$input,
+		$rundis$elm_bootstrap$Bootstrap$Form$Input$toAttributes(options),
+		_List_Nil);
+};
+var $rundis$elm_bootstrap$Bootstrap$Form$Input$input = F2(
+	function (tipe, options) {
+		return $rundis$elm_bootstrap$Bootstrap$Form$Input$view(
+			A2($rundis$elm_bootstrap$Bootstrap$Form$Input$create, tipe, options));
+	});
+var $rundis$elm_bootstrap$Bootstrap$Form$Input$text = $rundis$elm_bootstrap$Bootstrap$Form$Input$input($rundis$elm_bootstrap$Bootstrap$Form$Input$Text);
+var $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$text = $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$input($rundis$elm_bootstrap$Bootstrap$Form$Input$text);
+var $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$sizeAttribute = function (size) {
+	return A2(
+		$elm$core$Maybe$map,
+		function (s) {
+			return $elm$html$Html$Attributes$class('input-group-' + s);
+		},
+		$rundis$elm_bootstrap$Bootstrap$General$Internal$screenSizeOption(size));
+};
+var $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$view = function (_v0) {
+	var conf = _v0.a;
+	var _v1 = conf.input;
+	var input_ = _v1.a;
+	return A2(
+		$elm$html$Html$div,
+		_Utils_ap(
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$class('input-group')
+				]),
+			_Utils_ap(
+				A2(
+					$elm$core$List$filterMap,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							A2($elm$core$Maybe$andThen, $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$sizeAttribute, conf.size)
+						])),
+				conf.attributes)),
+		_Utils_ap(
+			A2(
+				$elm$core$List$map,
+				function (_v2) {
+					var e = _v2.a;
+					return A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('input-group-prepend')
+							]),
+						_List_fromArray(
+							[e]));
+				},
+				conf.predecessors),
+			_Utils_ap(
+				_List_fromArray(
+					[input_]),
+				A2(
+					$elm$core$List$map,
+					function (_v3) {
+						var e = _v3.a;
+						return A2(
+							$elm$html$Html$div,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$class('input-group-append')
+								]),
+							_List_fromArray(
+								[e]));
+					},
+					conf.successors))));
+};
+var $author$project$Main$genericDropdown = F7(
+	function (placeholder, lbl, state, msg, toggle, items, model) {
+		return $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$view(
+			A2(
+				$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$successors,
+				_List_fromArray(
+					[
+						A2(
+						$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$dropdown,
+						state(model),
+						{
+							items: items(model),
+							options: _List_fromArray(
+								[$rundis$elm_bootstrap$Bootstrap$Dropdown$alignMenuRight]),
+							toggleButton: toggle(model),
+							toggleMsg: msg
+						})
+					]),
+				A2(
+					$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$predecessors,
+					_List_fromArray(
+						[
+							A2(
+							$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$span,
+							_List_Nil,
+							_List_fromArray(
+								[
+									A2(
+									$elm$html$Html$b,
+									_List_Nil,
+									_List_fromArray(
+										[
+											$elm$html$Html$text(lbl)
+										]))
+								]))
+						]),
+					$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$small(
+						$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$config(
+							$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$text(
+								_List_fromArray(
+									[
+										$rundis$elm_bootstrap$Bootstrap$Form$Input$placeholder(
+										placeholder(model)),
+										$rundis$elm_bootstrap$Bootstrap$Form$Input$disabled(true)
+									])))))));
+	});
+var $author$project$Main$dataDropdown = A6(
+	$author$project$Main$genericDropdown,
+	$author$project$Main$dataPlaceholder,
+	'Data',
+	function ($) {
+		return $.dataDropState;
+	},
+	$author$project$Main$DataDropMsg,
+	$author$project$Main$dataButtonToggle,
+	$author$project$Main$dropdownData);
 var $rundis$elm_bootstrap$Bootstrap$Modal$Footer = function (a) {
 	return {$: 'Footer', a: a};
 };
@@ -16389,11 +16764,6 @@ var $rundis$elm_bootstrap$Bootstrap$Modal$footer = F3(
 						$rundis$elm_bootstrap$Bootstrap$Modal$Footer(
 							{attributes: attributes, children: children}))
 				}));
-	});
-var $elm$html$Html$form = _VirtualDom_node('form');
-var $rundis$elm_bootstrap$Bootstrap$Form$form = F2(
-	function (attributes, children) {
-		return A2($elm$html$Html$form, attributes, children);
 	});
 var $elm$html$Html$h5 = _VirtualDom_node('h5');
 var $rundis$elm_bootstrap$Bootstrap$Modal$Header = function (a) {
@@ -16428,11 +16798,353 @@ var $rundis$elm_bootstrap$Bootstrap$Modal$titledHeader = F3(
 				]));
 	});
 var $rundis$elm_bootstrap$Bootstrap$Modal$h5 = $rundis$elm_bootstrap$Bootstrap$Modal$titledHeader($elm$html$Html$h5);
+var $author$project$Main$ChangeSuccess = function (a) {
+	return {$: 'ChangeSuccess', a: a};
+};
+var $author$project$Main$dropdownSuccessItem = $author$project$Main$dropdownItem($author$project$Main$ChangeSuccess);
+var $author$project$DataSet$getLabels = function (data) {
+	return A2(
+		$elm$core$List$map,
+		function ($) {
+			return $.label;
+		},
+		data.frequencies);
+};
+var $author$project$Main$dropdownSuccess = function (model) {
+	var _v0 = model.selected;
+	if (_v0.$ === 'Nothing') {
+		return _List_Nil;
+	} else {
+		var d = _v0.a;
+		return A2(
+			$elm$core$List$map,
+			$author$project$Main$dropdownSuccessItem,
+			$author$project$DataSet$getLabels(d));
+	}
+};
+var $rundis$elm_bootstrap$Bootstrap$Internal$Button$Disabled = function (a) {
+	return {$: 'Disabled', a: a};
+};
+var $rundis$elm_bootstrap$Bootstrap$Button$disabled = function (disabled_) {
+	return $rundis$elm_bootstrap$Bootstrap$Internal$Button$Disabled(disabled_);
+};
+var $author$project$Main$noSelectedVar = function (model) {
+	var _v0 = model.selected;
+	if (_v0.$ === 'Nothing') {
+		return true;
+	} else {
+		return false;
+	}
+};
+var $author$project$Main$successButtonToggle = function (model) {
+	var attr = _List_fromArray(
+		[
+			$rundis$elm_bootstrap$Bootstrap$Button$outlinePrimary,
+			$rundis$elm_bootstrap$Bootstrap$Button$small,
+			$rundis$elm_bootstrap$Bootstrap$Button$disabled(
+			$author$project$Main$noSelectedVar(model))
+		]);
+	return A2($rundis$elm_bootstrap$Bootstrap$Dropdown$toggle, attr, _List_Nil);
+};
+var $author$project$Main$successPlaceholder = function (model) {
+	var _v0 = model.originalSample;
+	if (_v0.$ === 'Nothing') {
+		return 'Select';
+	} else {
+		var s = _v0.a;
+		return s.successLbl;
+	}
+};
+var $author$project$Main$successDropdown = A6(
+	$author$project$Main$genericDropdown,
+	$author$project$Main$successPlaceholder,
+	'Success',
+	function ($) {
+		return $.successDropState;
+	},
+	$author$project$Main$SuccessDropMsg,
+	$author$project$Main$successButtonToggle,
+	$author$project$Main$dropdownSuccess);
+var $author$project$Main$ShowModal = {$: 'ShowModal'};
+var $author$project$Main$genericButton = F5(
+	function (isDisabled, attrs, onclick, lbl, model) {
+		return A2(
+			$rundis$elm_bootstrap$Bootstrap$Button$button,
+			_List_fromArray(
+				[
+					$rundis$elm_bootstrap$Bootstrap$Button$small,
+					$rundis$elm_bootstrap$Bootstrap$Button$primary,
+					$rundis$elm_bootstrap$Bootstrap$Button$disabled(
+					isDisabled(model)),
+					$rundis$elm_bootstrap$Bootstrap$Button$attrs(attrs),
+					$rundis$elm_bootstrap$Bootstrap$Button$onClick(onclick)
+				]),
+			_List_fromArray(
+				[
+					$elm$html$Html$text(lbl)
+				]));
+	});
+var $rundis$elm_bootstrap$Bootstrap$Utilities$Spacing$ml1 = $elm$html$Html$Attributes$class('ml-1');
+var $author$project$Main$uploadButton = A4(
+	$author$project$Main$genericButton,
+	function (_v0) {
+		return false;
+	},
+	_List_fromArray(
+		[$rundis$elm_bootstrap$Bootstrap$Utilities$Spacing$ml1]),
+	$author$project$Main$ShowModal,
+	'Upload CSV');
+var $elm$html$Html$form = _VirtualDom_node('form');
+var $rundis$elm_bootstrap$Bootstrap$Form$form = F2(
+	function (attributes, children) {
+		return A2($elm$html$Html$form, attributes, children);
+	});
+var $rundis$elm_bootstrap$Bootstrap$Form$Col = function (a) {
+	return {$: 'Col', a: a};
+};
+var $rundis$elm_bootstrap$Bootstrap$Form$col = F2(
+	function (options, children) {
+		return $rundis$elm_bootstrap$Bootstrap$Form$Col(
+			{children: children, elemFn: $elm$html$Html$div, options: options});
+	});
+var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$ColAttrs = function (a) {
+	return {$: 'ColAttrs', a: a};
+};
+var $rundis$elm_bootstrap$Bootstrap$Grid$Col$attrs = function (attrs_) {
+	return $rundis$elm_bootstrap$Bootstrap$Grid$Internal$ColAttrs(attrs_);
+};
+var $rundis$elm_bootstrap$Bootstrap$Form$colLabel = F2(
+	function (options, children) {
+		return $rundis$elm_bootstrap$Bootstrap$Form$Col(
+			{
+				children: children,
+				elemFn: $elm$html$Html$label,
+				options: A2(
+					$elm$core$List$cons,
+					$rundis$elm_bootstrap$Bootstrap$Grid$Col$attrs(
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('col-form-label')
+							])),
+					options)
+			});
+	});
+var $rundis$elm_bootstrap$Bootstrap$Form$renderCol = function (_v0) {
+	var elemFn = _v0.a.elemFn;
+	var options = _v0.a.options;
+	var children = _v0.a.children;
+	return A2(
+		elemFn,
+		$rundis$elm_bootstrap$Bootstrap$Grid$Internal$colAttributes(options),
+		children);
+};
+var $rundis$elm_bootstrap$Bootstrap$Form$row = F2(
+	function (options, cols) {
+		return A2(
+			$elm$html$Html$div,
+			A2(
+				$elm$core$List$cons,
+				$elm$html$Html$Attributes$class('form-group'),
+				$rundis$elm_bootstrap$Bootstrap$Grid$Internal$rowAttributes(options)),
+			A2($elm$core$List$map, $rundis$elm_bootstrap$Bootstrap$Form$renderCol, cols));
+	});
+var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col4 = {$: 'Col4'};
+var $rundis$elm_bootstrap$Bootstrap$Grid$Col$sm4 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$SM, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col4);
+var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col6 = {$: 'Col6'};
+var $rundis$elm_bootstrap$Bootstrap$Grid$Col$sm6 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$SM, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col6);
+var $author$project$Main$uploadFormRow = F3(
+	function (model, lbl, input) {
+		return A2(
+			$rundis$elm_bootstrap$Bootstrap$Form$row,
+			_List_Nil,
+			_List_fromArray(
+				[
+					A2(
+					$rundis$elm_bootstrap$Bootstrap$Form$colLabel,
+					_List_fromArray(
+						[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm4]),
+					_List_fromArray(
+						[
+							$elm$html$Html$text(lbl)
+						])),
+					A2(
+					$rundis$elm_bootstrap$Bootstrap$Form$col,
+					_List_fromArray(
+						[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm6]),
+					_List_fromArray(
+						[
+							input(model)
+						]))
+				]));
+	});
+var $author$project$Main$SelectCount = function (a) {
+	return {$: 'SelectCount', a: a};
+};
+var $rundis$elm_bootstrap$Bootstrap$Form$Select$Custom = {$: 'Custom'};
+var $rundis$elm_bootstrap$Bootstrap$Form$Select$Select = function (a) {
+	return {$: 'Select', a: a};
+};
+var $rundis$elm_bootstrap$Bootstrap$Form$Select$create = F2(
+	function (options, items) {
+		return $rundis$elm_bootstrap$Bootstrap$Form$Select$Select(
+			{items: items, options: options});
+	});
+var $elm$html$Html$select = _VirtualDom_node('select');
+var $rundis$elm_bootstrap$Bootstrap$Form$Select$applyModifier = F2(
+	function (modifier, options) {
+		switch (modifier.$) {
+			case 'Size':
+				var size_ = modifier.a;
+				return _Utils_update(
+					options,
+					{
+						size: $elm$core$Maybe$Just(size_)
+					});
+			case 'Id':
+				var id_ = modifier.a;
+				return _Utils_update(
+					options,
+					{
+						id: $elm$core$Maybe$Just(id_)
+					});
+			case 'Custom':
+				return _Utils_update(
+					options,
+					{custom: true});
+			case 'Disabled':
+				var val = modifier.a;
+				return _Utils_update(
+					options,
+					{disabled: val});
+			case 'OnChange':
+				var onChange_ = modifier.a;
+				return _Utils_update(
+					options,
+					{
+						onChange: $elm$core$Maybe$Just(onChange_)
+					});
+			case 'Validation':
+				var validation_ = modifier.a;
+				return _Utils_update(
+					options,
+					{
+						validation: $elm$core$Maybe$Just(validation_)
+					});
+			default:
+				var attrs_ = modifier.a;
+				return _Utils_update(
+					options,
+					{
+						attributes: _Utils_ap(options.attributes, attrs_)
+					});
+		}
+	});
+var $rundis$elm_bootstrap$Bootstrap$Form$Select$customEventOnChange = function (tagger) {
+	return A2(
+		$elm$html$Html$Events$on,
+		'change',
+		A2($elm$json$Json$Decode$map, tagger, $elm$html$Html$Events$targetValue));
+};
+var $rundis$elm_bootstrap$Bootstrap$Form$Select$defaultOptions = {attributes: _List_Nil, custom: false, disabled: false, id: $elm$core$Maybe$Nothing, onChange: $elm$core$Maybe$Nothing, size: $elm$core$Maybe$Nothing, validation: $elm$core$Maybe$Nothing};
+var $elm$core$Basics$not = _Basics_not;
+var $rundis$elm_bootstrap$Bootstrap$Form$Select$sizeAttribute = F2(
+	function (isCustom, size_) {
+		var prefix = isCustom ? 'custom-select-' : 'form-control-';
+		return A2(
+			$elm$core$Maybe$map,
+			function (s) {
+				return $elm$html$Html$Attributes$class(
+					_Utils_ap(prefix, s));
+			},
+			$rundis$elm_bootstrap$Bootstrap$General$Internal$screenSizeOption(size_));
+	});
+var $rundis$elm_bootstrap$Bootstrap$Form$Select$validationAttribute = function (validation_) {
+	return $elm$html$Html$Attributes$class(
+		$rundis$elm_bootstrap$Bootstrap$Form$FormInternal$validationToString(validation_));
+};
+var $rundis$elm_bootstrap$Bootstrap$Form$Select$toAttributes = function (modifiers) {
+	var options = A3($elm$core$List$foldl, $rundis$elm_bootstrap$Bootstrap$Form$Select$applyModifier, $rundis$elm_bootstrap$Bootstrap$Form$Select$defaultOptions, modifiers);
+	return _Utils_ap(
+		_List_fromArray(
+			[
+				$elm$html$Html$Attributes$classList(
+				_List_fromArray(
+					[
+						_Utils_Tuple2('form-control', !options.custom),
+						_Utils_Tuple2('custom-select', options.custom)
+					])),
+				$elm$html$Html$Attributes$disabled(options.disabled)
+			]),
+		_Utils_ap(
+			A2(
+				$elm$core$List$filterMap,
+				$elm$core$Basics$identity,
+				_List_fromArray(
+					[
+						A2($elm$core$Maybe$map, $elm$html$Html$Attributes$id, options.id),
+						A2(
+						$elm$core$Maybe$andThen,
+						$rundis$elm_bootstrap$Bootstrap$Form$Select$sizeAttribute(options.custom),
+						options.size),
+						A2($elm$core$Maybe$map, $rundis$elm_bootstrap$Bootstrap$Form$Select$customEventOnChange, options.onChange),
+						A2($elm$core$Maybe$map, $rundis$elm_bootstrap$Bootstrap$Form$Select$validationAttribute, options.validation)
+					])),
+			options.attributes));
+};
+var $rundis$elm_bootstrap$Bootstrap$Form$Select$view = function (_v0) {
+	var options = _v0.a.options;
+	var items = _v0.a.items;
+	return A2(
+		$elm$html$Html$select,
+		$rundis$elm_bootstrap$Bootstrap$Form$Select$toAttributes(options),
+		A2(
+			$elm$core$List$map,
+			function (_v1) {
+				var e = _v1.a;
+				return e;
+			},
+			items));
+};
+var $rundis$elm_bootstrap$Bootstrap$Form$Select$custom = function (options) {
+	return A2(
+		$elm$core$Basics$composeL,
+		$rundis$elm_bootstrap$Bootstrap$Form$Select$view,
+		$rundis$elm_bootstrap$Bootstrap$Form$Select$create(
+			A2($elm$core$List$cons, $rundis$elm_bootstrap$Bootstrap$Form$Select$Custom, options)));
+};
+var $rundis$elm_bootstrap$Bootstrap$Form$Select$Disabled = function (a) {
+	return {$: 'Disabled', a: a};
+};
+var $rundis$elm_bootstrap$Bootstrap$Form$Select$disabled = function (disabled_) {
+	return $rundis$elm_bootstrap$Bootstrap$Form$Select$Disabled(disabled_);
+};
 var $rundis$elm_bootstrap$Bootstrap$Form$Select$Id = function (a) {
 	return {$: 'Id', a: a};
 };
 var $rundis$elm_bootstrap$Bootstrap$Form$Select$id = function (id_) {
 	return $rundis$elm_bootstrap$Bootstrap$Form$Select$Id(id_);
+};
+var $rundis$elm_bootstrap$Bootstrap$Form$Select$OnChange = function (a) {
+	return {$: 'OnChange', a: a};
+};
+var $rundis$elm_bootstrap$Bootstrap$Form$Select$onChange = function (toMsg) {
+	return $rundis$elm_bootstrap$Bootstrap$Form$Select$OnChange(toMsg);
+};
+var $author$project$Main$genericSelect = F5(
+	function (id, isDisabled, onchange, items, model) {
+		return A2(
+			$rundis$elm_bootstrap$Bootstrap$Form$Select$custom,
+			_List_fromArray(
+				[
+					$rundis$elm_bootstrap$Bootstrap$Form$Select$disabled(
+					isDisabled(model)),
+					$rundis$elm_bootstrap$Bootstrap$Form$Select$id(id),
+					$rundis$elm_bootstrap$Bootstrap$Form$Select$onChange(onchange)
+				]),
+			items(model));
+	});
+var $author$project$Main$notFrequency = function (model) {
+	return !_Utils_eq(model.fileType, $author$project$Main$Frequency);
 };
 var $rundis$elm_bootstrap$Bootstrap$Form$Select$Item = function (a) {
 	return {$: 'Item', a: a};
@@ -16443,6 +17155,112 @@ var $rundis$elm_bootstrap$Bootstrap$Form$Select$item = F2(
 		return $rundis$elm_bootstrap$Bootstrap$Form$Select$Item(
 			A2($elm$html$Html$option, attributes, children));
 	});
+var $author$project$Main$variableItem = function (lbl) {
+	return A2(
+		$rundis$elm_bootstrap$Bootstrap$Form$Select$item,
+		_List_fromArray(
+			[
+				$elm$html$Html$Attributes$value(lbl)
+			]),
+		_List_fromArray(
+			[
+				$elm$html$Html$text(lbl)
+			]));
+};
+var $author$project$Main$variableItems = function (model) {
+	var varItems = function () {
+		var _v0 = model.variables;
+		if (_v0.$ === 'Nothing') {
+			return _List_Nil;
+		} else {
+			var el = _v0.a;
+			var varNames = A2($elm$core$List$map, $elm$core$Tuple$first, el);
+			return A2($elm$core$List$map, $author$project$Main$variableItem, varNames);
+		}
+	}();
+	var baseItems = _List_fromArray(
+		[
+			A2(
+			$rundis$elm_bootstrap$Bootstrap$Form$Select$item,
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$value('none')
+				]),
+			_List_fromArray(
+				[
+					$elm$html$Html$text('Not Selected')
+				]))
+		]);
+	return _Utils_ap(baseItems, varItems);
+};
+var $author$project$Main$countSelect = A4($author$project$Main$genericSelect, 'countselect', $author$project$Main$notFrequency, $author$project$Main$SelectCount, $author$project$Main$variableItems);
+var $author$project$Main$CsvRequested = {$: 'CsvRequested'};
+var $author$project$Main$csvFileButton = A4(
+	$author$project$Main$genericButton,
+	function (_v0) {
+		return false;
+	},
+	_List_fromArray(
+		[$rundis$elm_bootstrap$Bootstrap$Utilities$Spacing$ml1]),
+	$author$project$Main$CsvRequested,
+	'CSV File');
+var $author$project$Main$ChangeFileType = function (a) {
+	return {$: 'ChangeFileType', a: a};
+};
+var $author$project$Main$fileTypeItems = function (_v0) {
+	return _List_fromArray(
+		[
+			A2(
+			$rundis$elm_bootstrap$Bootstrap$Form$Select$item,
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$value('none')
+				]),
+			_List_fromArray(
+				[
+					$elm$html$Html$text('Not Selected')
+				])),
+			A2(
+			$rundis$elm_bootstrap$Bootstrap$Form$Select$item,
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$value('reg')
+				]),
+			_List_fromArray(
+				[
+					$elm$html$Html$text('Regular')
+				])),
+			A2(
+			$rundis$elm_bootstrap$Bootstrap$Form$Select$item,
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$value('freq')
+				]),
+			_List_fromArray(
+				[
+					$elm$html$Html$text('Frequency')
+				]))
+		]);
+};
+var $author$project$Main$noFileName = function (model) {
+	return model.fileName === 'None';
+};
+var $author$project$Main$fileTypeSelect = A4($author$project$Main$genericSelect, 'fileselect', $author$project$Main$noFileName, $author$project$Main$ChangeFileType, $author$project$Main$fileTypeItems);
+var $author$project$Main$LoadUserData = {$: 'LoadUserData'};
+var $author$project$Main$noPerspectiveData = function (model) {
+	return _Utils_eq(model.perspectiveData, $elm$core$Maybe$Nothing);
+};
+var $author$project$Main$loadFileButton = A4(
+	$author$project$Main$genericButton,
+	$author$project$Main$noPerspectiveData,
+	_List_fromArray(
+		[
+			$elm$html$Html$Attributes$class('float-right')
+		]),
+	$author$project$Main$LoadUserData,
+	'Load');
+var $rundis$elm_bootstrap$Bootstrap$Table$Bordered = {$: 'Bordered'};
+var $rundis$elm_bootstrap$Bootstrap$Table$bordered = $rundis$elm_bootstrap$Bootstrap$Table$Bordered;
 var $rundis$elm_bootstrap$Bootstrap$Table$Td = function (a) {
 	return {$: 'Td', a: a};
 };
@@ -16482,71 +17300,6 @@ var $author$project$Main$makeTableRow = function (labelFreq) {
 					]))
 			]));
 };
-var $rundis$elm_bootstrap$Bootstrap$Dropdown$MenuAttrs = function (a) {
-	return {$: 'MenuAttrs', a: a};
-};
-var $rundis$elm_bootstrap$Bootstrap$Dropdown$menuAttrs = function (attrs_) {
-	return $rundis$elm_bootstrap$Bootstrap$Dropdown$MenuAttrs(attrs_);
-};
-var $rundis$elm_bootstrap$Bootstrap$Utilities$Spacing$ml1 = $elm$html$Html$Attributes$class('ml-1');
-var $rundis$elm_bootstrap$Bootstrap$Form$Select$OnChange = function (a) {
-	return {$: 'OnChange', a: a};
-};
-var $rundis$elm_bootstrap$Bootstrap$Form$Select$onChange = function (toMsg) {
-	return $rundis$elm_bootstrap$Bootstrap$Form$Select$OnChange(toMsg);
-};
-var $rundis$elm_bootstrap$Bootstrap$Internal$Button$Outlined = function (a) {
-	return {$: 'Outlined', a: a};
-};
-var $rundis$elm_bootstrap$Bootstrap$Button$outlinePrimary = $rundis$elm_bootstrap$Bootstrap$Internal$Button$Coloring(
-	$rundis$elm_bootstrap$Bootstrap$Internal$Button$Outlined($rundis$elm_bootstrap$Bootstrap$Internal$Button$Primary));
-var $rundis$elm_bootstrap$Bootstrap$Form$Input$Placeholder = function (a) {
-	return {$: 'Placeholder', a: a};
-};
-var $rundis$elm_bootstrap$Bootstrap$Form$Input$placeholder = function (value_) {
-	return $rundis$elm_bootstrap$Bootstrap$Form$Input$Placeholder(value_);
-};
-var $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$predecessors = F2(
-	function (addons, _v0) {
-		var conf = _v0.a;
-		return $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$Config(
-			_Utils_update(
-				conf,
-				{predecessors: addons}));
-	});
-var $rundis$elm_bootstrap$Bootstrap$General$Internal$Right = {$: 'Right'};
-var $rundis$elm_bootstrap$Bootstrap$General$Internal$HAlign = F2(
-	function (screenSize, align) {
-		return {align: align, screenSize: screenSize};
-	});
-var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$RowHAlign = function (a) {
-	return {$: 'RowHAlign', a: a};
-};
-var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$rowHAlign = F2(
-	function (size, align) {
-		return $rundis$elm_bootstrap$Bootstrap$Grid$Internal$RowHAlign(
-			A2($rundis$elm_bootstrap$Bootstrap$General$Internal$HAlign, size, align));
-	});
-var $rundis$elm_bootstrap$Bootstrap$Grid$Row$rightSm = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$rowHAlign, $rundis$elm_bootstrap$Bootstrap$General$Internal$SM, $rundis$elm_bootstrap$Bootstrap$General$Internal$Right);
-var $rundis$elm_bootstrap$Bootstrap$Form$renderCol = function (_v0) {
-	var elemFn = _v0.a.elemFn;
-	var options = _v0.a.options;
-	var children = _v0.a.children;
-	return A2(
-		elemFn,
-		$rundis$elm_bootstrap$Bootstrap$Grid$Internal$colAttributes(options),
-		children);
-};
-var $rundis$elm_bootstrap$Bootstrap$Form$row = F2(
-	function (options, cols) {
-		return A2(
-			$elm$html$Html$div,
-			A2(
-				$elm$core$List$cons,
-				$elm$html$Html$Attributes$class('form-group'),
-				$rundis$elm_bootstrap$Bootstrap$Grid$Internal$rowAttributes(options)),
-			A2($elm$core$List$map, $rundis$elm_bootstrap$Bootstrap$Form$renderCol, cols));
-	});
 var $rundis$elm_bootstrap$Bootstrap$Table$THead = function (a) {
 	return {$: 'THead', a: a};
 };
@@ -16564,252 +17317,10 @@ var $rundis$elm_bootstrap$Bootstrap$Table$simpleThead = function (cells) {
 				A2($rundis$elm_bootstrap$Bootstrap$Table$tr, _List_Nil, cells)
 			]));
 };
-var $rundis$elm_bootstrap$Bootstrap$Grid$Col$sm2 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$SM, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col2);
-var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col4 = {$: 'Col4'};
-var $rundis$elm_bootstrap$Bootstrap$Grid$Col$sm4 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$SM, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col4);
-var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col6 = {$: 'Col6'};
-var $rundis$elm_bootstrap$Bootstrap$Grid$Col$sm6 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$SM, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col6);
-var $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$small = function (_v0) {
-	var conf = _v0.a;
-	return $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$Config(
-		_Utils_update(
-			conf,
-			{
-				size: $elm$core$Maybe$Just($rundis$elm_bootstrap$Bootstrap$General$Internal$SM)
-			}));
-};
 var $rundis$elm_bootstrap$Bootstrap$Table$Small = {$: 'Small'};
 var $rundis$elm_bootstrap$Bootstrap$Table$small = $rundis$elm_bootstrap$Bootstrap$Table$Small;
-var $elm$html$Html$span = _VirtualDom_node('span');
-var $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$span = F2(
-	function (attributes, children) {
-		return $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$Addon(
-			A2(
-				$elm$html$Html$span,
-				A2(
-					$elm$core$List$cons,
-					$elm$html$Html$Attributes$class('input-group-text'),
-					attributes),
-				children));
-	});
 var $rundis$elm_bootstrap$Bootstrap$Table$Striped = {$: 'Striped'};
 var $rundis$elm_bootstrap$Bootstrap$Table$striped = $rundis$elm_bootstrap$Bootstrap$Table$Striped;
-var $rundis$elm_bootstrap$Bootstrap$Dropdown$DropdownToggle = function (a) {
-	return {$: 'DropdownToggle', a: a};
-};
-var $elm$json$Json$Decode$andThen = _Json_andThen;
-var $rundis$elm_bootstrap$Bootstrap$Dropdown$Open = {$: 'Open'};
-var $rundis$elm_bootstrap$Bootstrap$Dropdown$nextStatus = function (status) {
-	switch (status.$) {
-		case 'Open':
-			return $rundis$elm_bootstrap$Bootstrap$Dropdown$Closed;
-		case 'ListenClicks':
-			return $rundis$elm_bootstrap$Bootstrap$Dropdown$Closed;
-		default:
-			return $rundis$elm_bootstrap$Bootstrap$Dropdown$Open;
-	}
-};
-var $elm$json$Json$Decode$map3 = _Json_map3;
-var $elm$json$Json$Decode$float = _Json_decodeFloat;
-var $rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$offsetHeight = A2($elm$json$Json$Decode$field, 'offsetHeight', $elm$json$Json$Decode$float);
-var $rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$offsetWidth = A2($elm$json$Json$Decode$field, 'offsetWidth', $elm$json$Json$Decode$float);
-var $elm$json$Json$Decode$map4 = _Json_map4;
-var $rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$offsetLeft = A2($elm$json$Json$Decode$field, 'offsetLeft', $elm$json$Json$Decode$float);
-var $elm$json$Json$Decode$null = _Json_decodeNull;
-var $elm$json$Json$Decode$oneOf = _Json_oneOf;
-var $rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$offsetParent = F2(
-	function (x, decoder) {
-		return $elm$json$Json$Decode$oneOf(
-			_List_fromArray(
-				[
-					A2(
-					$elm$json$Json$Decode$field,
-					'offsetParent',
-					$elm$json$Json$Decode$null(x)),
-					A2($elm$json$Json$Decode$field, 'offsetParent', decoder)
-				]));
-	});
-var $rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$offsetTop = A2($elm$json$Json$Decode$field, 'offsetTop', $elm$json$Json$Decode$float);
-var $rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$scrollLeft = A2($elm$json$Json$Decode$field, 'scrollLeft', $elm$json$Json$Decode$float);
-var $rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$scrollTop = A2($elm$json$Json$Decode$field, 'scrollTop', $elm$json$Json$Decode$float);
-var $rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$position = F2(
-	function (x, y) {
-		return A2(
-			$elm$json$Json$Decode$andThen,
-			function (_v0) {
-				var x_ = _v0.a;
-				var y_ = _v0.b;
-				return A2(
-					$rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$offsetParent,
-					_Utils_Tuple2(x_, y_),
-					A2($rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$position, x_, y_));
-			},
-			A5(
-				$elm$json$Json$Decode$map4,
-				F4(
-					function (scrollLeft_, scrollTop_, offsetLeft_, offsetTop_) {
-						return _Utils_Tuple2((x + offsetLeft_) - scrollLeft_, (y + offsetTop_) - scrollTop_);
-					}),
-				$rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$scrollLeft,
-				$rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$scrollTop,
-				$rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$offsetLeft,
-				$rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$offsetTop));
-	});
-var $rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$boundingArea = A4(
-	$elm$json$Json$Decode$map3,
-	F3(
-		function (_v0, width, height) {
-			var x = _v0.a;
-			var y = _v0.b;
-			return {height: height, left: x, top: y, width: width};
-		}),
-	A2($rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$position, 0, 0),
-	$rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$offsetWidth,
-	$rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$offsetHeight);
-var $rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$childNode = function (idx) {
-	return $elm$json$Json$Decode$at(
-		_List_fromArray(
-			[
-				'childNodes',
-				$elm$core$String$fromInt(idx)
-			]));
-};
-var $rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$nextSibling = function (decoder) {
-	return A2($elm$json$Json$Decode$field, 'nextSibling', decoder);
-};
-var $rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$className = A2(
-	$elm$json$Json$Decode$at,
-	_List_fromArray(
-		['className']),
-	$elm$json$Json$Decode$string);
-var $elm$json$Json$Decode$fail = _Json_fail;
-var $rundis$elm_bootstrap$Bootstrap$Dropdown$isToggle = A2(
-	$elm$json$Json$Decode$andThen,
-	function (_class) {
-		return A2($elm$core$String$contains, 'dropdown-toggle', _class) ? $elm$json$Json$Decode$succeed(true) : $elm$json$Json$Decode$succeed(false);
-	},
-	$rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$className);
-var $rundis$elm_bootstrap$Bootstrap$Dropdown$toggler = F2(
-	function (path, decoder) {
-		return $elm$json$Json$Decode$oneOf(
-			_List_fromArray(
-				[
-					A2(
-					$elm$json$Json$Decode$andThen,
-					function (res) {
-						return res ? A2($elm$json$Json$Decode$at, path, decoder) : $elm$json$Json$Decode$fail('');
-					},
-					A2($elm$json$Json$Decode$at, path, $rundis$elm_bootstrap$Bootstrap$Dropdown$isToggle)),
-					A2(
-					$elm$json$Json$Decode$andThen,
-					function (_v0) {
-						return A2(
-							$rundis$elm_bootstrap$Bootstrap$Dropdown$toggler,
-							_Utils_ap(
-								path,
-								_List_fromArray(
-									['parentElement'])),
-							decoder);
-					},
-					A2(
-						$elm$json$Json$Decode$at,
-						_Utils_ap(
-							path,
-							_List_fromArray(
-								['parentElement'])),
-						$rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$className)),
-					$elm$json$Json$Decode$fail('No toggler found')
-				]));
-	});
-var $rundis$elm_bootstrap$Bootstrap$Dropdown$sizeDecoder = A3(
-	$elm$json$Json$Decode$map2,
-	$elm$core$Tuple$pair,
-	A2(
-		$rundis$elm_bootstrap$Bootstrap$Dropdown$toggler,
-		_List_fromArray(
-			['target']),
-		$rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$boundingArea),
-	A2(
-		$rundis$elm_bootstrap$Bootstrap$Dropdown$toggler,
-		_List_fromArray(
-			['target']),
-		$rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$nextSibling(
-			A2($rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$childNode, 0, $rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$boundingArea))));
-var $rundis$elm_bootstrap$Bootstrap$Dropdown$clickHandler = F2(
-	function (toMsg, state) {
-		var status = state.a.status;
-		return A2(
-			$elm$json$Json$Decode$andThen,
-			function (_v0) {
-				var b = _v0.a;
-				var m = _v0.b;
-				return $elm$json$Json$Decode$succeed(
-					toMsg(
-						$rundis$elm_bootstrap$Bootstrap$Dropdown$State(
-							{
-								menuSize: m,
-								status: $rundis$elm_bootstrap$Bootstrap$Dropdown$nextStatus(status),
-								toggleSize: b
-							})));
-			},
-			$rundis$elm_bootstrap$Bootstrap$Dropdown$sizeDecoder);
-	});
-var $rundis$elm_bootstrap$Bootstrap$Dropdown$togglePrivate = F4(
-	function (buttonOptions, children, toggleMsg, state) {
-		return A2(
-			$elm$html$Html$button,
-			_Utils_ap(
-				$rundis$elm_bootstrap$Bootstrap$Internal$Button$buttonAttributes(buttonOptions),
-				_List_fromArray(
-					[
-						$elm$html$Html$Attributes$class('dropdown-toggle'),
-						$elm$html$Html$Attributes$type_('button'),
-						A2(
-						$elm$html$Html$Events$on,
-						'click',
-						A2($rundis$elm_bootstrap$Bootstrap$Dropdown$clickHandler, toggleMsg, state))
-					])),
-			children);
-	});
-var $rundis$elm_bootstrap$Bootstrap$Dropdown$toggle = F2(
-	function (buttonOptions, children) {
-		return $rundis$elm_bootstrap$Bootstrap$Dropdown$DropdownToggle(
-			A2($rundis$elm_bootstrap$Bootstrap$Dropdown$togglePrivate, buttonOptions, children));
-	});
-var $author$project$Main$successButtonToggle = function (model) {
-	var disabled = function () {
-		var _v0 = model.selected;
-		if (_v0.$ === 'Nothing') {
-			return true;
-		} else {
-			return false;
-		}
-	}();
-	var attr = _List_fromArray(
-		[
-			$rundis$elm_bootstrap$Bootstrap$Button$outlinePrimary,
-			$rundis$elm_bootstrap$Bootstrap$Button$small,
-			$rundis$elm_bootstrap$Bootstrap$Button$disabled(disabled)
-		]);
-	return A2($rundis$elm_bootstrap$Bootstrap$Dropdown$toggle, attr, _List_Nil);
-};
-var $author$project$Main$successPlaceholder = function (model) {
-	var _v0 = model.originalSample;
-	if (_v0.$ === 'Nothing') {
-		return 'Select';
-	} else {
-		var s = _v0.a;
-		return s.successLbl;
-	}
-};
-var $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$successors = F2(
-	function (addons, _v0) {
-		var conf = _v0.a;
-		return $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$Config(
-			_Utils_update(
-				conf,
-				{successors: addons}));
-	});
 var $rundis$elm_bootstrap$Bootstrap$Table$Inversed = {$: 'Inversed'};
 var $elm$core$List$any = F2(
 	function (isOkay, list) {
@@ -17329,319 +17840,84 @@ var $rundis$elm_bootstrap$Bootstrap$Table$tbody = F2(
 		return $rundis$elm_bootstrap$Bootstrap$Table$TBody(
 			{attributes: attributes, rows: rows});
 	});
-var $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$Input = function (a) {
-	return {$: 'Input', a: a};
-};
-var $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$input = F2(
-	function (inputFn, options) {
-		return $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$Input(
-			inputFn(options));
-	});
-var $rundis$elm_bootstrap$Bootstrap$Form$Input$Text = {$: 'Text'};
-var $rundis$elm_bootstrap$Bootstrap$Form$Input$Input = function (a) {
-	return {$: 'Input', a: a};
-};
-var $rundis$elm_bootstrap$Bootstrap$Form$Input$Type = function (a) {
-	return {$: 'Type', a: a};
-};
-var $rundis$elm_bootstrap$Bootstrap$Form$Input$create = F2(
-	function (tipe, options) {
-		return $rundis$elm_bootstrap$Bootstrap$Form$Input$Input(
-			{
-				options: A2(
-					$elm$core$List$cons,
-					$rundis$elm_bootstrap$Bootstrap$Form$Input$Type(tipe),
-					options)
-			});
-	});
-var $rundis$elm_bootstrap$Bootstrap$Form$Input$applyModifier = F2(
-	function (modifier, options) {
-		switch (modifier.$) {
-			case 'Size':
-				var size_ = modifier.a;
-				return _Utils_update(
-					options,
-					{
-						size: $elm$core$Maybe$Just(size_)
-					});
-			case 'Id':
-				var id_ = modifier.a;
-				return _Utils_update(
-					options,
-					{
-						id: $elm$core$Maybe$Just(id_)
-					});
-			case 'Type':
-				var tipe = modifier.a;
-				return _Utils_update(
-					options,
-					{tipe: tipe});
-			case 'Disabled':
-				var val = modifier.a;
-				return _Utils_update(
-					options,
-					{disabled: val});
-			case 'Value':
-				var value_ = modifier.a;
-				return _Utils_update(
-					options,
-					{
-						value: $elm$core$Maybe$Just(value_)
-					});
-			case 'Placeholder':
-				var value_ = modifier.a;
-				return _Utils_update(
-					options,
-					{
-						placeholder: $elm$core$Maybe$Just(value_)
-					});
-			case 'OnInput':
-				var onInput_ = modifier.a;
-				return _Utils_update(
-					options,
-					{
-						onInput: $elm$core$Maybe$Just(onInput_)
-					});
-			case 'Validation':
-				var validation_ = modifier.a;
-				return _Utils_update(
-					options,
-					{
-						validation: $elm$core$Maybe$Just(validation_)
-					});
-			case 'Readonly':
-				var val = modifier.a;
-				return _Utils_update(
-					options,
-					{readonly: val});
-			case 'PlainText':
-				var val = modifier.a;
-				return _Utils_update(
-					options,
-					{plainText: val});
-			default:
-				var attrs_ = modifier.a;
-				return _Utils_update(
-					options,
-					{
-						attributes: _Utils_ap(options.attributes, attrs_)
-					});
-		}
-	});
-var $rundis$elm_bootstrap$Bootstrap$Form$Input$defaultOptions = {attributes: _List_Nil, disabled: false, id: $elm$core$Maybe$Nothing, onInput: $elm$core$Maybe$Nothing, placeholder: $elm$core$Maybe$Nothing, plainText: false, readonly: false, size: $elm$core$Maybe$Nothing, tipe: $rundis$elm_bootstrap$Bootstrap$Form$Input$Text, validation: $elm$core$Maybe$Nothing, value: $elm$core$Maybe$Nothing};
-var $elm$html$Html$Events$alwaysStop = function (x) {
-	return _Utils_Tuple2(x, true);
-};
-var $elm$virtual_dom$VirtualDom$MayStopPropagation = function (a) {
-	return {$: 'MayStopPropagation', a: a};
-};
-var $elm$html$Html$Events$stopPropagationOn = F2(
-	function (event, decoder) {
-		return A2(
-			$elm$virtual_dom$VirtualDom$on,
-			event,
-			$elm$virtual_dom$VirtualDom$MayStopPropagation(decoder));
-	});
-var $elm$html$Html$Events$onInput = function (tagger) {
-	return A2(
-		$elm$html$Html$Events$stopPropagationOn,
-		'input',
-		A2(
-			$elm$json$Json$Decode$map,
-			$elm$html$Html$Events$alwaysStop,
-			A2($elm$json$Json$Decode$map, tagger, $elm$html$Html$Events$targetValue)));
-};
-var $elm$html$Html$Attributes$placeholder = $elm$html$Html$Attributes$stringProperty('placeholder');
-var $elm$html$Html$Attributes$readonly = $elm$html$Html$Attributes$boolProperty('readOnly');
-var $rundis$elm_bootstrap$Bootstrap$Form$Input$sizeAttribute = function (size) {
-	return A2(
-		$elm$core$Maybe$map,
-		function (s) {
-			return $elm$html$Html$Attributes$class('form-control-' + s);
-		},
-		$rundis$elm_bootstrap$Bootstrap$General$Internal$screenSizeOption(size));
-};
-var $rundis$elm_bootstrap$Bootstrap$Form$Input$typeAttribute = function (inputType) {
-	return $elm$html$Html$Attributes$type_(
-		function () {
-			switch (inputType.$) {
-				case 'Text':
-					return 'text';
-				case 'Password':
-					return 'password';
-				case 'DatetimeLocal':
-					return 'datetime-local';
-				case 'Date':
-					return 'date';
-				case 'Month':
-					return 'month';
-				case 'Time':
-					return 'time';
-				case 'Week':
-					return 'week';
-				case 'Number':
-					return 'number';
-				case 'Email':
-					return 'email';
-				case 'Url':
-					return 'url';
-				case 'Search':
-					return 'search';
-				case 'Tel':
-					return 'tel';
-				default:
-					return 'color';
-			}
-		}());
-};
-var $rundis$elm_bootstrap$Bootstrap$Form$Input$validationAttribute = function (validation) {
-	return $elm$html$Html$Attributes$class(
-		$rundis$elm_bootstrap$Bootstrap$Form$FormInternal$validationToString(validation));
-};
-var $elm$html$Html$Attributes$value = $elm$html$Html$Attributes$stringProperty('value');
-var $rundis$elm_bootstrap$Bootstrap$Form$Input$toAttributes = function (modifiers) {
-	var options = A3($elm$core$List$foldl, $rundis$elm_bootstrap$Bootstrap$Form$Input$applyModifier, $rundis$elm_bootstrap$Bootstrap$Form$Input$defaultOptions, modifiers);
-	return _Utils_ap(
-		_List_fromArray(
-			[
-				$elm$html$Html$Attributes$class(
-				options.plainText ? 'form-control-plaintext' : 'form-control'),
-				$elm$html$Html$Attributes$disabled(options.disabled),
-				$elm$html$Html$Attributes$readonly(options.readonly || options.plainText),
-				$rundis$elm_bootstrap$Bootstrap$Form$Input$typeAttribute(options.tipe)
-			]),
-		_Utils_ap(
-			A2(
-				$elm$core$List$filterMap,
-				$elm$core$Basics$identity,
-				_List_fromArray(
-					[
-						A2($elm$core$Maybe$map, $elm$html$Html$Attributes$id, options.id),
-						A2($elm$core$Maybe$andThen, $rundis$elm_bootstrap$Bootstrap$Form$Input$sizeAttribute, options.size),
-						A2($elm$core$Maybe$map, $elm$html$Html$Attributes$value, options.value),
-						A2($elm$core$Maybe$map, $elm$html$Html$Attributes$placeholder, options.placeholder),
-						A2($elm$core$Maybe$map, $elm$html$Html$Events$onInput, options.onInput),
-						A2($elm$core$Maybe$map, $rundis$elm_bootstrap$Bootstrap$Form$Input$validationAttribute, options.validation)
-					])),
-			options.attributes));
-};
-var $rundis$elm_bootstrap$Bootstrap$Form$Input$view = function (_v0) {
-	var options = _v0.a.options;
-	return A2(
-		$elm$html$Html$input,
-		$rundis$elm_bootstrap$Bootstrap$Form$Input$toAttributes(options),
-		_List_Nil);
-};
-var $rundis$elm_bootstrap$Bootstrap$Form$Input$input = F2(
-	function (tipe, options) {
-		return $rundis$elm_bootstrap$Bootstrap$Form$Input$view(
-			A2($rundis$elm_bootstrap$Bootstrap$Form$Input$create, tipe, options));
-	});
-var $rundis$elm_bootstrap$Bootstrap$Form$Input$text = $rundis$elm_bootstrap$Bootstrap$Form$Input$input($rundis$elm_bootstrap$Bootstrap$Form$Input$Text);
-var $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$text = $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$input($rundis$elm_bootstrap$Bootstrap$Form$Input$text);
 var $rundis$elm_bootstrap$Bootstrap$Table$th = F2(
 	function (options, children) {
 		return $rundis$elm_bootstrap$Bootstrap$Table$Th(
 			{children: children, options: options});
 	});
-var $author$project$Main$variableItem = function (lbl) {
-	return A2(
-		$rundis$elm_bootstrap$Bootstrap$Form$Select$item,
-		_List_fromArray(
-			[
-				$elm$html$Html$Attributes$value(lbl)
-			]),
-		_List_fromArray(
-			[
-				$elm$html$Html$text(lbl)
-			]));
-};
-var $author$project$Main$variableItems = function (model) {
-	var varItems = function () {
-		var _v0 = model.variables;
-		if (_v0.$ === 'Nothing') {
-			return _List_Nil;
-		} else {
-			var el = _v0.a;
-			var varNames = A2($elm$core$List$map, $elm$core$Tuple$first, el);
-			return A2($elm$core$List$map, $author$project$Main$variableItem, varNames);
-		}
-	}();
-	var baseItems = _List_fromArray(
-		[
-			A2(
-			$rundis$elm_bootstrap$Bootstrap$Form$Select$item,
-			_List_fromArray(
-				[
-					$elm$html$Html$Attributes$value('none')
-				]),
-			_List_fromArray(
-				[
-					$elm$html$Html$text('Not Selected')
-				]))
-		]);
-	return _Utils_ap(baseItems, varItems);
-};
-var $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$sizeAttribute = function (size) {
-	return A2(
-		$elm$core$Maybe$map,
-		function (s) {
-			return $elm$html$Html$Attributes$class('input-group-' + s);
-		},
-		$rundis$elm_bootstrap$Bootstrap$General$Internal$screenSizeOption(size));
-};
-var $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$view = function (_v0) {
-	var conf = _v0.a;
-	var _v1 = conf.input;
-	var input_ = _v1.a;
-	return A2(
-		$elm$html$Html$div,
-		_Utils_ap(
-			_List_fromArray(
-				[
-					$elm$html$Html$Attributes$class('input-group')
-				]),
-			_Utils_ap(
-				A2(
-					$elm$core$List$filterMap,
-					$elm$core$Basics$identity,
+var $author$project$Main$previewTable = function (model) {
+	var _v0 = model.perspectiveData;
+	if (_v0.$ === 'Nothing') {
+		return A2($elm$html$Html$div, _List_Nil, _List_Nil);
+	} else {
+		var data = _v0.a;
+		return $rundis$elm_bootstrap$Bootstrap$Table$table(
+			{
+				options: _List_fromArray(
+					[$rundis$elm_bootstrap$Bootstrap$Table$small, $rundis$elm_bootstrap$Bootstrap$Table$striped, $rundis$elm_bootstrap$Bootstrap$Table$bordered]),
+				tbody: A2(
+					$rundis$elm_bootstrap$Bootstrap$Table$tbody,
+					_List_Nil,
+					A2($elm$core$List$map, $author$project$Main$makeTableRow, data.frequencies)),
+				thead: $rundis$elm_bootstrap$Bootstrap$Table$simpleThead(
 					_List_fromArray(
 						[
-							A2($elm$core$Maybe$andThen, $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$sizeAttribute, conf.size)
-						])),
-				conf.attributes)),
-		_Utils_ap(
-			A2(
-				$elm$core$List$map,
-				function (_v2) {
-					var e = _v2.a;
-					return A2(
-						$elm$html$Html$div,
-						_List_fromArray(
-							[
-								$elm$html$Html$Attributes$class('input-group-prepend')
-							]),
-						_List_fromArray(
-							[e]));
-				},
-				conf.predecessors),
-			_Utils_ap(
-				_List_fromArray(
-					[input_]),
-				A2(
-					$elm$core$List$map,
-					function (_v3) {
-						var e = _v3.a;
-						return A2(
-							$elm$html$Html$div,
+							A2(
+							$rundis$elm_bootstrap$Bootstrap$Table$th,
+							_List_Nil,
 							_List_fromArray(
 								[
-									$elm$html$Html$Attributes$class('input-group-append')
-								]),
+									$elm$html$Html$text('Label')
+								])),
+							A2(
+							$rundis$elm_bootstrap$Bootstrap$Table$th,
+							_List_Nil,
 							_List_fromArray(
-								[e]));
-					},
-					conf.successors))));
+								[
+									$elm$html$Html$text('Count')
+								]))
+						]))
+			});
+	}
+};
+var $author$project$Main$SelectVariable = function (a) {
+	return {$: 'SelectVariable', a: a};
+};
+var $author$project$Main$noTypeSelected = function (model) {
+	return _Utils_eq(model.fileType, $author$project$Main$NoType);
+};
+var $author$project$Main$variableSelect = A4($author$project$Main$genericSelect, 'varselect', $author$project$Main$noTypeSelected, $author$project$Main$SelectVariable, $author$project$Main$variableItems);
+var $author$project$Main$uploadRowsRaw = _List_fromArray(
+	[
+		_Utils_Tuple2('Select File', $author$project$Main$csvFileButton),
+		_Utils_Tuple2(
+		'File Name',
+		function (model) {
+			return $elm$html$Html$text(model.fileName);
+		}),
+		_Utils_Tuple2('File Type', $author$project$Main$fileTypeSelect),
+		_Utils_Tuple2('Variable', $author$project$Main$variableSelect),
+		_Utils_Tuple2('Counts', $author$project$Main$countSelect),
+		_Utils_Tuple2('Preview', $author$project$Main$previewTable),
+		_Utils_Tuple2('', $author$project$Main$loadFileButton)
+	]);
+var $author$project$Main$uploadForm = function (model) {
+	var lbls = A2($elm$core$List$map, $elm$core$Tuple$first, $author$project$Main$uploadRowsRaw);
+	var funcs = A2($elm$core$List$map, $elm$core$Tuple$second, $author$project$Main$uploadRowsRaw);
+	return A2(
+		$rundis$elm_bootstrap$Bootstrap$Grid$container,
+		_List_Nil,
+		_List_fromArray(
+			[
+				A2(
+				$rundis$elm_bootstrap$Bootstrap$Form$form,
+				_List_Nil,
+				A3(
+					$elm$core$List$map2,
+					$author$project$Main$uploadFormRow(model),
+					lbls,
+					funcs))
+			]));
 };
 var $rundis$elm_bootstrap$Bootstrap$Modal$StartClose = {$: 'StartClose'};
 var $rundis$elm_bootstrap$Bootstrap$Modal$getCloseMsg = function (config_) {
@@ -17979,121 +18255,9 @@ var $author$project$Main$dataEntryInputGroupView = function (model) {
 					[
 						$elm$html$Html$text('Data Selection')
 					])),
-				$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$view(
-				A2(
-					$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$successors,
-					_List_fromArray(
-						[
-							A2(
-							$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$dropdown,
-							model.dataDropState,
-							{
-								items: $author$project$Main$dropdownData(model.datasets),
-								options: _List_fromArray(
-									[
-										$rundis$elm_bootstrap$Bootstrap$Dropdown$alignMenuRight,
-										$rundis$elm_bootstrap$Bootstrap$Dropdown$menuAttrs(
-										_List_fromArray(
-											[
-												A2($elm$html$Html$Attributes$style, 'font-size', 'smaller'),
-												A2($elm$html$Html$Attributes$style, 'max-height', 'max-content'),
-												A2($elm$html$Html$Attributes$style, 'max-width', 'max-content'),
-												A2($elm$html$Html$Attributes$style, 'width', '200px !important')
-											]))
-									]),
-								toggleButton: A2(
-									$rundis$elm_bootstrap$Bootstrap$Dropdown$toggle,
-									_List_fromArray(
-										[$rundis$elm_bootstrap$Bootstrap$Button$outlinePrimary, $rundis$elm_bootstrap$Bootstrap$Button$small]),
-									_List_Nil),
-								toggleMsg: $author$project$Main$DataDropMsg
-							})
-						]),
-					A2(
-						$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$predecessors,
-						_List_fromArray(
-							[
-								A2(
-								$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$span,
-								_List_Nil,
-								_List_fromArray(
-									[
-										A2(
-										$elm$html$Html$b,
-										_List_Nil,
-										_List_fromArray(
-											[
-												$elm$html$Html$text('Data')
-											]))
-									]))
-							]),
-						$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$small(
-							$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$config(
-								$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$text(
-									_List_fromArray(
-										[
-											$rundis$elm_bootstrap$Bootstrap$Form$Input$placeholder(
-											$author$project$Main$dataPlaceholder(model)),
-											$rundis$elm_bootstrap$Bootstrap$Form$Input$disabled(true)
-										]))))))),
-				$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$view(
-				A2(
-					$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$successors,
-					_List_fromArray(
-						[
-							A2(
-							$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$dropdown,
-							model.successDropState,
-							{
-								items: $author$project$Main$dropdownSuccess(model),
-								options: _List_fromArray(
-									[$rundis$elm_bootstrap$Bootstrap$Dropdown$alignMenuRight]),
-								toggleButton: $author$project$Main$successButtonToggle(model),
-								toggleMsg: $author$project$Main$SuccessDropMsg
-							})
-						]),
-					A2(
-						$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$predecessors,
-						_List_fromArray(
-							[
-								A2(
-								$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$span,
-								_List_Nil,
-								_List_fromArray(
-									[
-										A2(
-										$elm$html$Html$b,
-										_List_Nil,
-										_List_fromArray(
-											[
-												$elm$html$Html$text('Success')
-											]))
-									]))
-							]),
-						$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$small(
-							$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$config(
-								$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$text(
-									_List_fromArray(
-										[
-											$rundis$elm_bootstrap$Bootstrap$Form$Input$placeholder(
-											$author$project$Main$successPlaceholder(model)),
-											$rundis$elm_bootstrap$Bootstrap$Form$Input$disabled(true)
-										]))))))),
-				A2(
-				$rundis$elm_bootstrap$Bootstrap$Button$button,
-				_List_fromArray(
-					[
-						$rundis$elm_bootstrap$Bootstrap$Button$small,
-						$rundis$elm_bootstrap$Bootstrap$Button$primary,
-						$rundis$elm_bootstrap$Bootstrap$Button$attrs(
-						_List_fromArray(
-							[$rundis$elm_bootstrap$Bootstrap$Utilities$Spacing$ml1])),
-						$rundis$elm_bootstrap$Bootstrap$Button$onClick($author$project$Main$ShowModal)
-					]),
-				_List_fromArray(
-					[
-						$elm$html$Html$text('Upload CSV')
-					])),
+				$author$project$Main$dataDropdown(model),
+				$author$project$Main$successDropdown(model),
+				$author$project$Main$uploadButton(model),
 				A2(
 				$rundis$elm_bootstrap$Bootstrap$Modal$view,
 				model.modalVisibility,
@@ -18123,265 +18287,7 @@ var $author$project$Main$dataEntryInputGroupView = function (model) {
 						_List_Nil,
 						_List_fromArray(
 							[
-								A2(
-								$rundis$elm_bootstrap$Bootstrap$Grid$container,
-								_List_Nil,
-								_List_fromArray(
-									[
-										A2(
-										$rundis$elm_bootstrap$Bootstrap$Form$form,
-										_List_Nil,
-										_List_fromArray(
-											[
-												A2(
-												$rundis$elm_bootstrap$Bootstrap$Form$row,
-												_List_Nil,
-												_List_fromArray(
-													[
-														A2(
-														$rundis$elm_bootstrap$Bootstrap$Form$colLabel,
-														_List_fromArray(
-															[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm4]),
-														_List_fromArray(
-															[
-																$elm$html$Html$text('Select File')
-															])),
-														A2(
-														$rundis$elm_bootstrap$Bootstrap$Form$col,
-														_List_fromArray(
-															[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm4]),
-														_List_fromArray(
-															[
-																A2(
-																$rundis$elm_bootstrap$Bootstrap$Button$button,
-																_List_fromArray(
-																	[
-																		$rundis$elm_bootstrap$Bootstrap$Button$small,
-																		$rundis$elm_bootstrap$Bootstrap$Button$primary,
-																		$rundis$elm_bootstrap$Bootstrap$Button$attrs(
-																		_List_fromArray(
-																			[$rundis$elm_bootstrap$Bootstrap$Utilities$Spacing$ml1])),
-																		$rundis$elm_bootstrap$Bootstrap$Button$onClick($author$project$Main$CsvRequested)
-																	]),
-																_List_fromArray(
-																	[
-																		$elm$html$Html$text('CSV File')
-																	]))
-															]))
-													])),
-												A2(
-												$rundis$elm_bootstrap$Bootstrap$Form$row,
-												_List_Nil,
-												_List_fromArray(
-													[
-														A2(
-														$rundis$elm_bootstrap$Bootstrap$Form$colLabel,
-														_List_fromArray(
-															[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm4]),
-														_List_fromArray(
-															[
-																$elm$html$Html$text('File Name')
-															])),
-														A2(
-														$rundis$elm_bootstrap$Bootstrap$Form$col,
-														_List_fromArray(
-															[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm6]),
-														_List_fromArray(
-															[
-																$elm$html$Html$text(model.fileName)
-															]))
-													])),
-												A2(
-												$rundis$elm_bootstrap$Bootstrap$Form$row,
-												_List_Nil,
-												_List_fromArray(
-													[
-														A2(
-														$rundis$elm_bootstrap$Bootstrap$Form$colLabel,
-														_List_fromArray(
-															[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm4]),
-														_List_fromArray(
-															[
-																$elm$html$Html$text('File Type')
-															])),
-														A2(
-														$rundis$elm_bootstrap$Bootstrap$Form$col,
-														_List_fromArray(
-															[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm6]),
-														_List_fromArray(
-															[
-																A2(
-																$rundis$elm_bootstrap$Bootstrap$Form$Select$custom,
-																_List_fromArray(
-																	[
-																		$rundis$elm_bootstrap$Bootstrap$Form$Select$disabled(model.fileName === 'None'),
-																		$rundis$elm_bootstrap$Bootstrap$Form$Select$id('myselect'),
-																		$rundis$elm_bootstrap$Bootstrap$Form$Select$onChange($author$project$Main$ChangeFileType)
-																	]),
-																_List_fromArray(
-																	[
-																		A2(
-																		$rundis$elm_bootstrap$Bootstrap$Form$Select$item,
-																		_List_fromArray(
-																			[
-																				$elm$html$Html$Attributes$value('none')
-																			]),
-																		_List_fromArray(
-																			[
-																				$elm$html$Html$text('Not Selected')
-																			])),
-																		A2(
-																		$rundis$elm_bootstrap$Bootstrap$Form$Select$item,
-																		_List_fromArray(
-																			[
-																				$elm$html$Html$Attributes$value('reg')
-																			]),
-																		_List_fromArray(
-																			[
-																				$elm$html$Html$text('Regular')
-																			])),
-																		A2(
-																		$rundis$elm_bootstrap$Bootstrap$Form$Select$item,
-																		_List_fromArray(
-																			[
-																				$elm$html$Html$Attributes$value('freq')
-																			]),
-																		_List_fromArray(
-																			[
-																				$elm$html$Html$text('Frequency')
-																			]))
-																	]))
-															]))
-													])),
-												A2(
-												$rundis$elm_bootstrap$Bootstrap$Form$row,
-												_List_Nil,
-												_List_fromArray(
-													[
-														A2(
-														$rundis$elm_bootstrap$Bootstrap$Form$colLabel,
-														_List_fromArray(
-															[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm4]),
-														_List_fromArray(
-															[
-																$elm$html$Html$text('Variable')
-															])),
-														A2(
-														$rundis$elm_bootstrap$Bootstrap$Form$col,
-														_List_fromArray(
-															[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm6]),
-														_List_fromArray(
-															[
-																A2(
-																$rundis$elm_bootstrap$Bootstrap$Form$Select$custom,
-																_List_fromArray(
-																	[
-																		$rundis$elm_bootstrap$Bootstrap$Form$Select$disabled(
-																		_Utils_eq(model.fileType, $author$project$Main$NoType)),
-																		$rundis$elm_bootstrap$Bootstrap$Form$Select$onChange($author$project$Main$SelectVariable)
-																	]),
-																$author$project$Main$variableItems(model))
-															]))
-													])),
-												A2(
-												$rundis$elm_bootstrap$Bootstrap$Form$row,
-												_List_Nil,
-												_List_fromArray(
-													[
-														A2(
-														$rundis$elm_bootstrap$Bootstrap$Form$colLabel,
-														_List_fromArray(
-															[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm4]),
-														_List_fromArray(
-															[
-																$elm$html$Html$text('Counts')
-															])),
-														A2(
-														$rundis$elm_bootstrap$Bootstrap$Form$col,
-														_List_fromArray(
-															[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm6]),
-														_List_fromArray(
-															[
-																A2(
-																$rundis$elm_bootstrap$Bootstrap$Form$Select$custom,
-																_List_fromArray(
-																	[
-																		$rundis$elm_bootstrap$Bootstrap$Form$Select$disabled(
-																		!_Utils_eq(model.fileType, $author$project$Main$Frequency)),
-																		$rundis$elm_bootstrap$Bootstrap$Form$Select$onChange($author$project$Main$SelectCount)
-																	]),
-																$author$project$Main$variableItems(model))
-															]))
-													])),
-												function () {
-												var _v0 = model.perspectiveData;
-												if (_v0.$ === 'Nothing') {
-													return A2($elm$html$Html$div, _List_Nil, _List_Nil);
-												} else {
-													var data = _v0.a;
-													return $rundis$elm_bootstrap$Bootstrap$Table$table(
-														{
-															options: _List_fromArray(
-																[$rundis$elm_bootstrap$Bootstrap$Table$small, $rundis$elm_bootstrap$Bootstrap$Table$striped, $rundis$elm_bootstrap$Bootstrap$Table$bordered]),
-															tbody: A2(
-																$rundis$elm_bootstrap$Bootstrap$Table$tbody,
-																_List_Nil,
-																A2($elm$core$List$map, $author$project$Main$makeTableRow, data.frequencies)),
-															thead: $rundis$elm_bootstrap$Bootstrap$Table$simpleThead(
-																_List_fromArray(
-																	[
-																		A2(
-																		$rundis$elm_bootstrap$Bootstrap$Table$th,
-																		_List_Nil,
-																		_List_fromArray(
-																			[
-																				$elm$html$Html$text('Label')
-																			])),
-																		A2(
-																		$rundis$elm_bootstrap$Bootstrap$Table$th,
-																		_List_Nil,
-																		_List_fromArray(
-																			[
-																				$elm$html$Html$text('Count')
-																			]))
-																	]))
-														});
-												}
-											}(),
-												A2(
-												$rundis$elm_bootstrap$Bootstrap$Form$row,
-												_List_fromArray(
-													[$rundis$elm_bootstrap$Bootstrap$Grid$Row$rightSm]),
-												_List_fromArray(
-													[
-														A2(
-														$rundis$elm_bootstrap$Bootstrap$Form$col,
-														_List_fromArray(
-															[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm2]),
-														_List_fromArray(
-															[
-																A2(
-																$rundis$elm_bootstrap$Bootstrap$Button$button,
-																_List_fromArray(
-																	[
-																		$rundis$elm_bootstrap$Bootstrap$Button$primary,
-																		$rundis$elm_bootstrap$Bootstrap$Button$attrs(
-																		_List_fromArray(
-																			[
-																				$elm$html$Html$Attributes$class('float-right')
-																			])),
-																		$rundis$elm_bootstrap$Bootstrap$Button$disabled(
-																		_Utils_eq(model.perspectiveData, $elm$core$Maybe$Nothing)),
-																		$rundis$elm_bootstrap$Bootstrap$Button$onClick($author$project$Main$LoadUserData)
-																	]),
-																_List_fromArray(
-																	[
-																		$elm$html$Html$text('Load')
-																	]))
-															]))
-													]))
-											]))
-									]))
+								$author$project$Main$uploadForm(model)
 							]),
 						A3(
 							$rundis$elm_bootstrap$Bootstrap$Modal$h5,
@@ -18404,12 +18310,10 @@ var $author$project$Main$distPlotView = function (model) {
 		_List_Nil);
 };
 var $elm$html$Html$h3 = _VirtualDom_node('h3');
+var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col12 = {$: 'Col12'};
 var $rundis$elm_bootstrap$Bootstrap$General$Internal$MD = {$: 'MD'};
 var $rundis$elm_bootstrap$Bootstrap$Grid$Col$md12 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$MD, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col12);
-var $rundis$elm_bootstrap$Bootstrap$Grid$Col$md3 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$MD, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col3);
 var $rundis$elm_bootstrap$Bootstrap$Grid$Col$md4 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$MD, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col4);
-var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col5 = {$: 'Col5'};
-var $rundis$elm_bootstrap$Bootstrap$Grid$Col$md5 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$MD, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col5);
 var $rundis$elm_bootstrap$Bootstrap$Grid$Col$md8 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$MD, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col8);
 var $elm$html$Html$Attributes$href = function (url) {
 	return A2(
@@ -18474,7 +18378,7 @@ var $author$project$Main$mainGrid = F7(
 									A2(
 									$rundis$elm_bootstrap$Bootstrap$Grid$col,
 									_List_fromArray(
-										[$rundis$elm_bootstrap$Bootstrap$Grid$Col$md3]),
+										[$rundis$elm_bootstrap$Bootstrap$Grid$Col$md4]),
 									_List_fromArray(
 										[dataEntry])),
 									A2(
@@ -18482,13 +18386,13 @@ var $author$project$Main$mainGrid = F7(
 									_List_fromArray(
 										[$rundis$elm_bootstrap$Bootstrap$Grid$Col$md4]),
 									_List_fromArray(
-										[collectButtons])),
+										[originalSample])),
 									A2(
 									$rundis$elm_bootstrap$Bootstrap$Grid$col,
 									_List_fromArray(
-										[$rundis$elm_bootstrap$Bootstrap$Grid$Col$md5]),
+										[$rundis$elm_bootstrap$Bootstrap$Grid$Col$md4]),
 									_List_fromArray(
-										[confLimits]))
+										[bootstrapSample]))
 								])),
 							A2(
 							$rundis$elm_bootstrap$Bootstrap$Grid$row,
@@ -18506,9 +18410,9 @@ var $author$project$Main$mainGrid = F7(
 											_List_Nil,
 											_List_fromArray(
 												[
-													originalSample,
+													collectButtons,
 													A2($elm$html$Html$br, _List_Nil, _List_Nil),
-													bootstrapSample
+													confLimits
 												]))
 										])),
 									A2(
@@ -18538,24 +18442,13 @@ var $author$project$Main$mainGrid = F7(
 						]))
 				]));
 	});
-var $author$project$Main$originalSampleView = function (model) {
-	var _v0 = model.originalSample;
-	if (_v0.$ === 'Nothing') {
-		return A2($elm$html$Html$div, _List_Nil, _List_Nil);
-	} else {
-		return A3(
-			$author$project$Main$sampleGrid,
-			'Original Sample',
-			$author$project$Main$statisticView(model.originalSample),
-			A2(
-				$elm$html$Html$div,
-				_List_fromArray(
-					[
-						$elm$html$Html$Attributes$id('samplePlot')
-					]),
-				_List_Nil));
-	}
-};
+var $author$project$Main$originalSampleView = A3(
+	$author$project$Main$sampleGrid,
+	function ($) {
+		return $.originalSample;
+	},
+	'Original Sample',
+	'samplePlot');
 var $author$project$Main$view = function (model) {
 	return A2(
 		$elm$html$Html$div,

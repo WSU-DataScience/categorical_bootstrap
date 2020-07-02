@@ -4,21 +4,25 @@ import Browser
 import Task
 import Debug
 import Random
-import Binomial exposing (..)
-import DataSet exposing (..)
-import DataEntry exposing (..)
-import CountDict exposing (..)
-import Dict exposing (..)
+import Binomial exposing (getBinomGen, roundFloat)
+import CollectButtons exposing (collectButtons, totalCollectedTxt, resetButton) 
+import CountDict exposing (CountDict, updateCountDict)
+import DataSet exposing (Sample, DataSet, LabelFreq, getLabels, createDataFromRegular, createDataFromFreq, getNewData, getSuccess, updateSample, makeEmptySample)
+import Defaults exposing (defaults)
+import ReadCSV exposing (Variable, example2, getHeadTail, getVariables)
+import Limits exposing (Tail(..), TailBound, TailValue(..))
+import DistPlot exposing (DistPlotConfig, distPlot, getMaxHeight, getTailExpression, getXandY)
+import SamplePlot exposing (samplePlot)
+import Dict 
 import File exposing (File, name)
 import File.Select as Select
-import Html exposing (Html, button, p, text, div, h2, h3, h5, h4, b, br)
-import Html.Attributes exposing (style, for, value, class, placeholder, id)
+import Html exposing (Html, button, p, text, div, h3, h5, h4, b, br)
+import Html.Attributes exposing (style, value, class, id)
 import Html.Events exposing (onClick)
-import List.Extra exposing (zip, getAt, group, last, scanl, takeWhile, dropWhileRight)
+import List.Extra exposing (zip, group, last, scanl, takeWhile, dropWhileRight)
 import Bootstrap.CDN as CDN
 import Bootstrap.Grid as Grid
 import Bootstrap.Grid.Col as Col
-import Bootstrap.Grid.Row as Row
 import Bootstrap.Button as Button
 import Bootstrap.Utilities.Spacing as Spacing
 import Bootstrap.Form as Form
@@ -28,17 +32,8 @@ import Bootstrap.Form.InputGroup as InputGroup
 import Bootstrap.Dropdown as Dropdown
 import Bootstrap.ButtonGroup as ButtonGroup
 import Bootstrap.Modal as Modal
-import OneSample exposing (SampleData)
-import DataSet exposing (..)
-import ReadCSV exposing (..)
 import Bootstrap.Table as Table
-import SamplePlot exposing (..)
 import VegaLite exposing (Spec, bar, circle)
-import Defaults exposing (defaults)
-import CollectButtons exposing (collectButtons, totalCollectedTxt, resetButton) 
-import Layout exposing (collectButtonGrid)
-import Limits exposing (..)
-import DistPlot exposing (..)
 
 
 -- MAIN
@@ -53,8 +48,13 @@ main =
     }
 
 
-
 -- MODEL
+
+type alias SampleData = { p : Float
+                        , successLbl : String
+                        , failureLbl : String
+                        , ws : List Float
+                        }
 
 type FileType = NoType | Regular | Frequency
 
@@ -165,7 +165,7 @@ updateYs ws model =
             
                 Just binomGen -> 
                     (ws |> updateCountDict binomGen model.ys
-                    , model.trials + (List.length ws)
+                    , model.trials + List.length ws
                     )
 
     in
@@ -214,6 +214,28 @@ resetTrials model =
             , tailLimit = NoBounds
             }
 
+sampleConfig : Model -> Sample -> DistPlotConfig
+sampleConfig model sample =
+        let
+            n = sample.n |> toFloat
+            p = (toFloat sample.numSuccess)/n
+            mean = n*p
+            tailExpr = getTailExpression mean model.tailLimit
+            isLarge = model.trials > defaults.largePlot
+            (xs, ys) = getXandY isLarge model.ys
+            smallestX = Maybe.withDefault 0 (List.minimum xs) - 3
+            largestX = Maybe.withDefault n (List.maximum xs) + 3 
+            ps = xs |> List.map (\x -> x/n)
+        in
+            { tailExpression = tailExpr
+            , xs = ps
+            , ys = ys
+            , maxY = getMaxHeight model.ys
+            , minX = Basics.max 0 (smallestX/n)
+            , maxX = Basics.min 1 (largestX/n)
+            , mark = if isLarge then bar else circle
+            , xAxisTitle = "Proportion of " ++ sample.successLbl
+            }
 
 updateDistPlotConfig : Model -> Model
 updateDistPlotConfig model =
@@ -222,29 +244,7 @@ updateDistPlotConfig model =
             model
 
         Just sample ->
-            let
-                n = sample.n |> toFloat
-                p = (toFloat sample.numSuccess)/n
-                mean = n*p
-                tailExpr = getTailExpression mean model.tailLimit
-                isLarge = model.trials > defaults.largePlot
-                (xs, ys) = getXandY isLarge model.ys
-                smallestX = Maybe.withDefault 0 (List.minimum xs) - 3
-                largestX = Maybe.withDefault n (List.maximum xs) + 3 
-                ps = xs |> List.map (\x -> x/n)
-                numSD = defaults.numSD
-                sd = p*(1-p)/n
-                config = Just { tailExpression = tailExpr
-                            , xs = ps
-                            , ys = ys
-                            , maxY = getMaxHeight model.ys
-                            , minX = Basics.max 0 (smallestX/n)
-                            , maxX = Basics.min 1 (largestX/n)
-                            , mark = if isLarge then bar else circle
-                            , xAxisTitle = "Proportion of " ++ sample.successLbl
-                            }
-            in
-                { model | distPlotConfig = config}
+            { model | distPlotConfig = sample |> sampleConfig model |> Just}
 
 divideBy : Int -> Int -> Float
 divideBy denom numer =
@@ -274,31 +274,30 @@ rightTailBound tailArea percentiles =
         |> last
         |> Maybe.map Tuple.first
 
-getBound : Model -> TailBound
-getBound model =
-    case (model.originalSample, model.tail, model.level) of
-        (Just sample, Left, Just level) -> 
-            let
-                tailArea = 1 - level
-            in
-                model.ys
-                |> getPercentiles sample.n model.trials
-                |> leftTailBound tailArea
-                |> Maybe.map Lower
-                |> Maybe.withDefault NoBounds
+oneTailBound : (Float -> List (Float, Float) -> Maybe Float) -> (Float -> TailValue Float) -> Model -> Float -> Sample -> TailValue Float
+oneTailBound boundFunc tailFunc model level sample =
+    let
+        tailArea = 1 - level
+    in
+        model.ys
+        |> getPercentiles sample.n model.trials
+        |> boundFunc tailArea
+        |> Maybe.map tailFunc
+        |> Maybe.withDefault NoBounds
+
+getLeftTailBound : Model -> Float -> Sample -> TailValue Float
+
+getLeftTailBound = oneTailBound leftTailBound Lower
 
 
-        (Just sample, Right, Just level) -> 
-            let
-                tailArea = 1 - level
-            in
-                model.ys
-                |> getPercentiles sample.n model.trials
-                |> rightTailBound tailArea
-                |> Maybe.map Upper
-                |> Maybe.withDefault NoBounds
 
-        (Just sample, Two, Just level) -> 
+getRightTailBound : Model -> Float -> Sample -> TailValue Float
+getRightTailBound = oneTailBound rightTailBound Upper
+
+
+
+getTwoTailBound : Model -> Float -> Sample -> TailValue Float
+getTwoTailBound model level sample = 
             let
                 tailArea = (1 - level)/2
                 percentiles =
@@ -312,6 +311,19 @@ getBound model =
                 Maybe.map2 TwoTail left right
                 |> Maybe.withDefault NoBounds
 
+
+getBound : Model -> TailBound
+getBound model =
+    case (model.originalSample, model.tail, model.level) of
+        (Just sample, Left, Just level) -> 
+            getLeftTailBound model level sample
+
+
+        (Just sample, Right, Just level) -> 
+            getRightTailBound model level sample
+
+        (Just sample, Two, Just level) -> 
+            getTwoTailBound model level sample
         _ ->
             NoBounds
 
@@ -601,10 +613,10 @@ fileContent model =
                     |> getHeadTail
                     |> Maybe.withDefault ("guh", [])
                     -- |> Tuple.mapSecond (String.split "\n")
-                    |> Tuple.mapSecond (List.tail)
+                    |> Tuple.mapSecond List.tail
                     |> Tuple.mapSecond (Maybe.withDefault [])
-                    |> Tuple.mapSecond (List.sort)
-                    |> Tuple.mapSecond (group)
+                    |> Tuple.mapSecond List.sort
+                    |> Tuple.mapSecond group
                     |> Tuple.mapSecond (List.map (Tuple.mapSecond (List.length >> (+) 1)))
                     |> Debug.toString
                     |> text
@@ -612,20 +624,6 @@ fileContent model =
                 , br [] []
              ]
     Just content ->
-        let
-            rows = content
-                |> String.split "\n"
-                |> List.filter (String.isEmpty >> not)
-                |> List.map (String.split ",")
-            header = Maybe.withDefault [] (rows |> List.head)
-            body = 
-               case List.tail rows of 
-                Nothing ->
-                    []
-                Just el ->
-                    el
-        in
-        
         div []
             [ p [ style "white-space" "pre" ] [ text content ]
             , model.ys
@@ -637,28 +635,25 @@ fileContent model =
               |> text
             ]
 
--- .dropdown-item { 
---   width: max-content !important;
--- }
-
--- .dropdown-menu {
-
---     max-height: max-content;
---     max-width: max-content;
--- }
+dropdownItem : (String -> Msg) -> String -> Dropdown.DropdownItem Msg
 dropdownItem msg txt =
     Dropdown.buttonItem [ onClick (txt |> msg),  style "width" "max-content !important" ] [ Html.text txt ]
 
+
+dropdownDataItem : String -> Dropdown.DropdownItem Msg
 dropdownDataItem = dropdownItem ChangeData
 
+dropdownSuccessItem : String -> Dropdown.DropdownItem Msg
 dropdownSuccessItem = dropdownItem ChangeSuccess
 
 
-dropdownData datasets =
-    datasets
+dropdownData : Model -> List (Dropdown.DropdownItem Msg)
+dropdownData model =
+    model.datasets
     |> List.map .name
     |> List.map dropdownDataItem
 
+dropdownSuccess : Model -> List (Dropdown.DropdownItem Msg)
 dropdownSuccess model =
     case model.selected of
         Nothing ->
@@ -670,6 +665,7 @@ dropdownSuccess model =
             |> List.map dropdownSuccessItem
 
 
+dataPlaceholder : Model -> String
 dataPlaceholder model =
     case model.selected of
         Nothing ->
@@ -678,20 +674,30 @@ dataPlaceholder model =
         Just data ->
             data.name
 
+dataButtonToggle : Model -> Dropdown.DropdownToggle msg
+dataButtonToggle _ = 
+    Dropdown.toggle [ Button.outlinePrimary -- pulldownOutline model
+                    , Button.small 
+                    ] 
+                    []
 
+noSelectedVar : Model -> Bool
+noSelectedVar model =
+    case model.selected of
+        Nothing ->
+            True
+        
+        _ ->
+            False
+
+successButtonToggle : Model -> Dropdown.DropdownToggle msg
 successButtonToggle model =
     let
-        disabled =
-            case model.selected of
-                Nothing ->
-                    True
-                
-                _ ->
-                    False
-        attr = [ Button.outlinePrimary , Button.small, Button.disabled disabled]
+        attr = [ Button.outlinePrimary , Button.small, model |> noSelectedVar |> Button.disabled ]
     in
         Dropdown.toggle  attr []
 
+successPlaceholder : Model -> String
 successPlaceholder model =
     case model.originalSample of
         Nothing ->
@@ -701,10 +707,12 @@ successPlaceholder model =
             s.successLbl
 
 
+variableItem : String -> Select.Item msg
 variableItem lbl =
    Select.item [ value lbl] [ text lbl]
 
 
+variableItems : Model -> List (Select.Item msg)
 variableItems model =
     let
         baseItems = [ Select.item [ value "none"] [ text "Not Selected"]]
@@ -721,139 +729,165 @@ variableItems model =
         baseItems ++ varItems
     
 
+makeTableRow : LabelFreq -> Table.Row msg
 makeTableRow labelFreq =
     Table.tr []
         [ Table.td [] [ labelFreq |> .label |> text  ]
         , Table.td [] [ labelFreq |> .count |> String.fromInt |> text  ]
         ]
 
+genericDropdown : (Model -> String) -> String -> (Model -> Dropdown.State) -> (Dropdown.State -> Msg) -> (Model -> Dropdown.DropdownToggle Msg) -> (Model -> List (Dropdown.DropdownItem Msg)) -> Model -> Html Msg
+genericDropdown placeholder lbl state msg toggle items model =
+    InputGroup.config
+        ( InputGroup.text [ Input.placeholder (placeholder model), Input.disabled True] )  --++ inputFeedback model) )
+        |> InputGroup.small
+        |> InputGroup.predecessors
+            [ InputGroup.span [] [ b [] [text lbl]] ]
+        |> InputGroup.successors
+                [ InputGroup.dropdown
+                    (model |> state)
+                    { options = [ Dropdown.alignMenuRight ]
+                    , toggleMsg = msg
+                    , toggleButton = toggle model
+                    , items = items model
+                    }
+                ]
+        |> InputGroup.view
+
+dataDropdown : Model -> Html Msg
+dataDropdown = genericDropdown dataPlaceholder "Data" .dataDropState DataDropMsg dataButtonToggle dropdownData
     
 
+successDropdown : Model -> Html Msg
+successDropdown = genericDropdown successPlaceholder "Success" .successDropState SuccessDropMsg successButtonToggle dropdownSuccess
+
+
+
+noPerspectiveData : Model -> Bool
+noPerspectiveData model =
+    model.perspectiveData == Nothing
+
+genericButton : (Model -> Bool) -> List (Html.Attribute Msg) -> Msg -> String -> Model -> Html Msg
+genericButton isDisabled attrs onclick lbl model =
+    Button.button
+        [ Button.small
+        , Button.primary
+        , Button.disabled (model |> isDisabled)
+        , Button.attrs attrs
+        , Button.onClick onclick 
+        ]
+        [ text lbl ]
+
+uploadButton : Model -> Html Msg
+uploadButton = genericButton (\_ -> False) [ Spacing.ml1 ] ShowModal "Upload CSV"
+
+
+csvFileButton : Model -> Html Msg
+csvFileButton = genericButton (\_ -> False) [ Spacing.ml1 ] CsvRequested "CSV File"
+
+
+loadFileButton : Model -> Html Msg
+loadFileButton = genericButton noPerspectiveData [  class "float-right" ] LoadUserData "Load"
+
+
+fileTypeItems : Model -> List (Select.Item msg)
+fileTypeItems _ =   [ Select.item [ value "none"] [ text "Not Selected"]
+                    , Select.item [ value "reg"] [ text "Regular"]
+                    , Select.item [ value "freq"] [ text "Frequency"]
+                    ]
+
+noTypeSelected : Model -> Bool
+noTypeSelected model = 
+    model.fileType == NoType
+
+noFileName : Model -> Bool
+noFileName model =
+    model.fileName == "None"
+
+notFrequency : Model -> Bool
+notFrequency model =
+    model.fileType /= Frequency
+
+
+
+genericSelect : String -> (Model -> Bool) -> (String -> Msg) -> (Model -> List (Select.Item Msg)) -> Model -> Html Msg
+genericSelect id isDisabled onchange items model =
+    Select.custom 
+        [ Select.disabled (model |> isDisabled)
+        , Select.id id
+        , Select.onChange onchange
+        ]
+        (items model)
+
+fileTypeSelect : Model -> Html Msg
+fileTypeSelect = genericSelect "fileselect"  noFileName ChangeFileType fileTypeItems
+
+
+variableSelect : Model -> Html Msg
+variableSelect = genericSelect "varselect"  noTypeSelected SelectVariable variableItems
+
+
+countSelect : Model -> Html Msg
+countSelect = genericSelect "countselect" notFrequency SelectCount variableItems
+
+
+previewTable : Model -> Html Msg
+previewTable model = 
+    case model.perspectiveData of
+        Nothing ->
+            div [] []
+        
+        Just data ->
+            Table.table
+                    { options = [ Table.small, Table.striped, Table.bordered]
+                    , thead = Table.simpleThead
+                                [ Table.th [] [ text "Label" ]
+                                , Table.th [] [ text "Count" ]
+                                ]
+                    , tbody = 
+                        Table.tbody []
+                                    (List.map makeTableRow data.frequencies)
+                    }
+
+uploadFormRow : Model -> String -> (Model -> Html Msg) -> Html Msg
+uploadFormRow model lbl input =
+    Form.row []
+        [ Form.colLabel [ Col.sm4 ] [ text lbl ]
+        , Form.col [ Col.sm6 ] [ input model ]
+        ]
+
+uploadRowsRaw : List (String, Model -> Html Msg)
+uploadRowsRaw = [ ("Select File", csvFileButton)
+                , ("File Name", \model -> text model.fileName )
+                , ("File Type", fileTypeSelect)
+                , ("Variable", variableSelect)
+                , ("Counts", countSelect)
+                , ("Preview", previewTable)
+                , ("", loadFileButton)
+                ]  
+
+uploadForm : Model -> Html Msg
+uploadForm model =
+    let
+        lbls = List.map Tuple.first uploadRowsRaw
+        funcs = List.map Tuple.second uploadRowsRaw
+    in
+    
+    Grid.container []
+                    [ Form.form []
+                      (List.map2 (uploadFormRow model) lbls funcs)
+                    ]
+
+dataEntryInputGroupView : Model -> Html Msg
 dataEntryInputGroupView model =
     div []
         [ Html.h4 [] [Html.text "Data Selection"]
-        , InputGroup.config
-            ( InputGroup.text [ Input.placeholder (dataPlaceholder model), Input.disabled True] )  --++ inputFeedback model) )
-            |> InputGroup.small
-            |> InputGroup.predecessors
-                [ InputGroup.span [] [ b [] [text "Data"]] ]
-            |> InputGroup.successors
-                    [ InputGroup.dropdown
-                        model.dataDropState
-                        { options = [ Dropdown.alignMenuRight
-                                    , Dropdown.menuAttrs [ style "font-size" "smaller"
-                                                         , style "max-height" "max-content"
-                                                         , style "max-width" "max-content" 
-                                                         , style "width" "200px !important"]
-                                    ]
-                        , toggleMsg = DataDropMsg
-                        , toggleButton = 
-                            Dropdown.toggle [ Button.outlinePrimary -- pulldownOutline model
-                                            , Button.small 
-                                            ] 
-                                            []
-                        , items = dropdownData model.datasets 
-                        }
-                    ]
-            |> InputGroup.view
-        , InputGroup.config
-            ( InputGroup.text [ Input.placeholder (successPlaceholder model), Input.disabled True])  -- ++ inputFeedback model) )
-            |> InputGroup.small
-            |> InputGroup.predecessors
-                [ InputGroup.span [] [ b [] [text "Success"]] ]
-            |> InputGroup.successors
-                    [ InputGroup.dropdown
-                        model.successDropState
-                        { options = [ Dropdown.alignMenuRight]
-                        , toggleMsg = SuccessDropMsg
-                        , toggleButton = successButtonToggle model
-                        , items = dropdownSuccess model
-                        }
-                    ]
-            |> InputGroup.view
-        , Button.button
-            [ Button.small, Button.primary, Button.attrs [ Spacing.ml1 ],  Button.onClick ShowModal ]
-            [ text "Upload CSV" ]
+        , model |> dataDropdown
+        , model |> successDropdown
+        , uploadButton model
         , Modal.config CloseModal
             |> Modal.h5 [] [ text "Upload CSV data" ]
-            |> Modal.body []
-                [ Grid.container []
-                    [ Form.form []
-                        [ Form.row []
-                            [ Form.colLabel [ Col.sm4 ] [ text "Select File" ]
-                            , Form.col [ Col.sm4 ]
-                                [ Button.button
-                                    [ Button.small, Button.primary, Button.attrs [ Spacing.ml1 ],  Button.onClick CsvRequested ]
-                                    [ text "CSV File" ]
-                                ]
-                            ]
-                        , Form.row []
-                            [ Form.colLabel [ Col.sm4 ] [ text "File Name" ]
-                            , Form.col [ Col.sm6 ] [ text model.fileName ]
-                            ]
-                        , Form.row []
-                            [ Form.colLabel [ Col.sm4 ] [ text "File Type" ]
-                            , Form.col [ Col.sm6 ]
-                                [ Select.custom 
-                                    [ Select.disabled (model.fileName == "None")
-                                    , Select.id "myselect"
-                                    , Select.onChange ChangeFileType
-                                    ]
-                                    [ Select.item [ value "none"] [ text "Not Selected"]
-                                    , Select.item [ value "reg"] [ text "Regular"]
-                                    , Select.item [ value "freq"] [ text "Frequency"]
-                                    ]
-                                ]
-                            ]
-                        , Form.row []
-                            [ Form.colLabel [ Col.sm4 ] [ text "Variable" ]
-                            , Form.col [ Col.sm6 ]
-                                [ Select.custom 
-                                    [ Select.disabled (model.fileType == NoType)
-                                    , Select.onChange SelectVariable
-                                    ] 
-                                    (variableItems model)
-                                ]
-                            ]
-                        , Form.row []
-                            [ Form.colLabel [ Col.sm4 ] [ text "Counts" ]
-                            , Form.col [ Col.sm6 ]
-                                [ Select.custom 
-                                    [ Select.disabled (model.fileType /= Frequency)
-                                    , Select.onChange SelectCount
-                                    ]
-                                    (variableItems model)
-                                ]
-                            ]
-                        , case model.perspectiveData of
-                            Nothing ->
-                                div [] []
-                            
-                            Just data ->
-                                Table.table
-                                        { options = [ Table.small, Table.striped, Table.bordered]
-                                        , thead = Table.simpleThead
-                                                    [ Table.th [] [ text "Label" ]
-                                                    , Table.th [] [ text "Count" ]
-                                                    ]
-                                        , tbody = 
-                                            Table.tbody []
-                                                        (List.map makeTableRow data.frequencies)
-                                        }
-                        , Form.row [ Row.rightSm ]
-                            [ Form.col [ Col.sm2 ]
-                                [ Button.button
-                                    [ Button.primary
-                                    , Button.attrs [ class "float-right"]
-                                    , Button.disabled (model.perspectiveData == Nothing)
-                                    , Button.onClick LoadUserData
-                                    ]
-                                    [ text "Load" ]
-                                ]
-                            ]
-                        ]
-                    ]
-                ]
+            |> Modal.body [] [ uploadForm model ]
             |> Modal.footer []
                 [ Button.button
                     [ Button.outlinePrimary
@@ -866,8 +900,9 @@ dataEntryInputGroupView model =
         ]
 
 
-statisticView maybeSuccess =
-    case maybeSuccess of
+statisticView : (Model -> Maybe Sample) -> Model -> Html Msg
+statisticView dotSample model =
+    case model |> dotSample of
         Nothing ->
             div [] []
         
@@ -893,45 +928,52 @@ statisticView maybeSuccess =
                         ]
 
 
-sampleGrid label statistics plotDiv =
-  div []
-      [ Form.group []
-        [ h4 [] [ Html.text label]
-        , Grid.row []
-            [ Grid.col [ Col.xs10 ] [ statistics ]
-            , Grid.col [ Col.xs2 ] []
-            ]
-        , Grid.row []
-            [ Grid.col [ Col.xs12]
-                       [ plotDiv ]
-            ]
-        ]
-      ]
-
-originalSampleView : Model -> Html msg
-
-originalSampleView model =
-    case model.originalSample of
+sampleGrid : (Model -> Maybe Sample) -> String -> String -> Model -> Html Msg
+sampleGrid dotSample label plotId model =
+    case model |> dotSample of
             Nothing ->
                 div [] []
             _ ->
-                sampleGrid 
-                    "Original Sample" 
-                    (statisticView model.originalSample)
-                    (div [id "samplePlot"] [])
+                div []
+                    [ Form.group []
+                        [ h4 [] [ Html.text label]
+                        , Grid.row []
+                            [ Grid.col [ Col.xs7 ] [ div [id plotId ] [] ]
+                            , Grid.col [ Col.xs5 ] [ statisticView dotSample model ]
+                            ]
+                        ]
+                    ]
+
+originalSampleView : Model -> Html Msg
+originalSampleView = sampleGrid .originalSample "Original Sample" "samplePlot"
 
 
-bootstrapSampleView model =
-    case model.originalSample of
-            Nothing ->
-                div [] []
-            _ ->
-                sampleGrid 
-                    "Bootstrap Sample" 
-                    (statisticView model.bootstrapSample)
-                    (div [id "bootstrapPlot"] [])
+bootstrapSampleView : Model -> Html Msg
+bootstrapSampleView = sampleGrid .bootstrapSample "Bootstrap Sample" "bootstrapPlot"
 
+collectButtonGrid reset buttons count =
+    div [] [ Form.group []
+              [ Grid.row []
+                  [ Grid.col  [ Col.xs9 ]
+                              [ Html.h4 [] [Html.text "Collect Statistics"]
+                              ]
+                  , Grid.col  [ Col.xs3 ]
+                              [ reset ]
+                              
+                  ]
+              , Grid.row []
+                  [ Grid.col  [ Col.xs10 ]
+                              [ buttons ]
+                              
+                  ]
+              , Grid.row []
+                  [  Grid.col  [ Col.xs10 ]
+                              [ count ]
+                  ]
+              ]
+          ]
 
+collectButtonView : Model -> Html Msg
 collectButtonView model =
     collectButtonGrid 
         ( resetButton Reset)
@@ -942,6 +984,7 @@ collectButtonView model =
         ( totalCollectedTxt model.trials )
 
 
+distPlotView : Model -> Html Msg
 distPlotView model =
     if model.originalSample == Nothing  then
             div [] []
@@ -963,28 +1006,33 @@ outputText model =
 
         TwoTail l u ->
             (l |> roundFloat 4 |> String.fromFloat ) ++ " < p < " ++ (u |> roundFloat 4 |> String.fromFloat )
-        
 
 
-    
-
-
+confLimitsView : Model -> Html Msg
 confLimitsView model =
-    div []
-        [ Grid.container []
-                [ Html.h4 [] [Html.text "Confidence Interval"]
-                , Grid.row []
-                    [ Grid.col [ Col.sm3 ] [ b [] [text "Tail" ]]
-                    , Grid.col [ Col.sm8 ] [  tailButtonView model ]
-                    , Grid.colBreak []
-                    , Grid.col [ Col.sm3 ] [ b [] [text "Level" ]]
-                    , Grid.col [ Col.sm8 ] [  levelButtonView model]
-                    , Grid.colBreak []
-                    , Grid.col [ Col.sm3 ] [ b [] [text "Interval" ]]
-                    , Grid.col [ Col.sm8 ] [ model |> outputText |> text ]
+    div [] [ Form.group []
+              [ Grid.row []
+                  [ Grid.col  [ Col.xs9 ]
+                              [ Html.h4 [] [Html.text "Confidence Interval"]
+                              , div []
+                                    [ Grid.container []
+                                            [ Grid.row []
+                                                [ Grid.col [ Col.sm3 ] [ b [] [text "Tail" ]]
+                                                , Grid.col [ Col.sm8 ] [  tailButtonView model ]
+                                                , Grid.colBreak []
+                                                , Grid.col [ Col.sm3 ] [ b [] [text "Level" ]]
+                                                , Grid.col [ Col.sm8 ] [  levelButtonView model]
+                                                , Grid.colBreak []
+                                                , Grid.col [ Col.sm3 ] [ b [] [text "Interval" ]]
+                                                , Grid.col [ Col.sm8 ] [ model |> outputText |> text ]
+                                                ]
+                                            ]
+                                    ]
+                              
+                              ]
                     ]
-                ]
-        ]
+              ]
+    ]
 
 
 
@@ -994,15 +1042,15 @@ tailButtonView model =
           [ ButtonGroup.radioButton
                   (model.tail == Left)
                   [ Button.primary, Button.small, Button.onClick <| ChangeTail Left ]
-                  [ Html.text "Left-tail" ]
+                  [ Html.text "Left" ]
           , ButtonGroup.radioButton
                   (model.tail == Right)
                   [ Button.primary, Button.small, Button.onClick <| ChangeTail Right ]
-                  [ Html.text "Right-tail" ]
+                  [ Html.text "Right" ]
           , ButtonGroup.radioButton
                   (model.tail == Two)
                   [ Button.primary, Button.small, Button.onClick <| ChangeTail Two ]
-                  [ Html.text "Two-tail" ]
+                  [ Html.text "Two" ]
           ]
 
 
@@ -1035,19 +1083,20 @@ mainGrid dataEntry originalSample bootstrapSample collectButtons distPlot confLi
                                 ]
                     ]
                 , Grid.row []
-                    [ Grid.col  [ Col.md3] 
+                    [ Grid.col  [ Col.md4 ]
                                 [ dataEntry]
                     , Grid.col [ Col.md4]
-                               [ collectButtons ]
-                    , Grid.col [ Col.md5]
-                               [ confLimits ]
+                                [ originalSample ]
+                    , Grid.col [ Col.md4]
+                               [ bootstrapSample ]
                     ]
                 , Grid.row []
                     [ Grid.col [ Col.md4]
                                [div [] 
-                                    [ originalSample
+                                    [ collectButtons
                                     , br [] []
-                                    , bootstrapSample
+                                    , confLimits
+
                                     ]
                                 ]
                     , Grid.col [ Col.md8] 
@@ -1079,6 +1128,8 @@ view model =
 
 -- port
 
+
+samplePlotCmd : (Spec -> Cmd.Cmd msg) -> (Model -> Maybe Sample) -> Model -> Cmd.Cmd msg
 samplePlotCmd cmd dotSample model =
     case model |> dotSample of
         Nothing ->
@@ -1088,11 +1139,14 @@ samplePlotCmd cmd dotSample model =
             cmd (samplePlot sample)
 
 
+originalPlotCmd : Model -> Cmd.Cmd msg
 originalPlotCmd = samplePlotCmd samplePlotToJS .originalSample
 
 
+bootstrapPlotCmd : Model -> Cmd.Cmd msg
 bootstrapPlotCmd = samplePlotCmd bootstrapPlotToJS .bootstrapSample
 
+distPlotCmd : Model -> Cmd.Cmd msg
 distPlotCmd model =
     case model.distPlotConfig of
         Nothing ->

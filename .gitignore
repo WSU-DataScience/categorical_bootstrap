@@ -5,3 +5,6 @@ repl-temp-*
 # stupid mac stuff
 .DS_Store
 **/.DS_Store
+*.docx
+src/old_files/*
+other_stuff/*
