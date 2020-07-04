@@ -18310,8 +18310,8 @@ var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col1 = {$: 'Col1'};
 var $rundis$elm_bootstrap$Bootstrap$Grid$Col$sm1 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$SM, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col1);
 var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col11 = {$: 'Col11'};
 var $rundis$elm_bootstrap$Bootstrap$Grid$Col$sm11 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$SM, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col11);
-var $author$project$Main$collectGrid = F3(
-	function (buttons, numCollected, resetButton) {
+var $author$project$Main$collectGrid = F2(
+	function (buttons, resetButton) {
 		var components = _List_fromArray(
 			[
 				_Utils_Tuple2('', buttons),
@@ -18333,56 +18333,10 @@ var $author$project$CollectButtons$resetButton = function (onClickMsg) {
 				$elm$html$Html$text('Reset')
 			]));
 };
-var $elm$core$String$right = F2(
-	function (n, string) {
-		return (n < 1) ? '' : A3(
-			$elm$core$String$slice,
-			-n,
-			$elm$core$String$length(string),
-			string);
-	});
-var $author$project$Display$pullOffThree = function (s) {
-	var n = $elm$core$String$length(s);
-	return (!n) ? $elm$core$Maybe$Nothing : ((n >= 3) ? $elm$core$Maybe$Just(
-		_Utils_Tuple2(
-			A2($elm$core$String$right, 3, s),
-			A2($elm$core$String$left, n - 3, s))) : $elm$core$Maybe$Just(
-		_Utils_Tuple2(s, '')));
-};
-var $elm_community$list_extra$List$Extra$unfoldr = F2(
-	function (f, seed) {
-		var _v0 = f(seed);
-		if (_v0.$ === 'Nothing') {
-			return _List_Nil;
-		} else {
-			var _v1 = _v0.a;
-			var a = _v1.a;
-			var b = _v1.b;
-			return A2(
-				$elm$core$List$cons,
-				a,
-				A2($elm_community$list_extra$List$Extra$unfoldr, f, b));
-		}
-	});
-var $author$project$Display$stringAndAddCommas = function (n) {
+var $author$project$Main$collectView = function (_v0) {
 	return A2(
-		$elm$core$String$join,
-		',',
-		$elm$core$List$reverse(
-			A2(
-				$elm_community$list_extra$List$Extra$unfoldr,
-				$author$project$Display$pullOffThree,
-				$elm$core$String$fromInt(n))));
-};
-var $author$project$CollectButtons$totalCollectedTxt = function (numTrials) {
-	return $elm$html$Html$text(
-		$author$project$Display$stringAndAddCommas(numTrials) + ' statistics collected');
-};
-var $author$project$Main$collectView = function (model) {
-	return A3(
 		$author$project$Main$collectGrid,
 		A2($author$project$CollectButtons$collectButtons, $author$project$Main$Collect, $author$project$Defaults$defaults.collectNs),
-		$author$project$CollectButtons$totalCollectedTxt(model.trials),
 		$author$project$CollectButtons$resetButton($author$project$Main$Reset));
 };
 var $author$project$Main$maybeShowControls = F2(
@@ -18614,16 +18568,19 @@ var $author$project$Main$distSummaryGrid = F3(
 			]);
 		return A4($author$project$Main$formGroup, $rundis$elm_bootstrap$Bootstrap$Grid$Col$sm4, $rundis$elm_bootstrap$Bootstrap$Grid$Col$sm8, 'Bootstrap Distribution', components);
 	});
-var $author$project$Main$leverage = F4(
-	function (trials, n, val, cnt) {
-		var prop = val / n;
-		var frac = cnt / trials;
-		return prop * frac;
+var $author$project$Utility$roundFloat = F2(
+	function (digits, n) {
+		var div = A2($elm$core$Basics$pow, 10, digits);
+		var shifted = n * div;
+		return function (x) {
+			return x / div;
+		}(
+			$elm$core$Basics$round(shifted));
 	});
-var $author$project$Main$leverages = F3(
-	function (trials, countDict, n) {
+var $author$project$CountDict$expectedValue = F2(
+	function (trials, valAndFreq) {
 		return A2(
-			$author$project$Binomial$roundFloat,
+			$author$project$Utility$roundFloat,
 			3,
 			A3(
 				$elm$core$List$foldl,
@@ -18631,13 +18588,12 @@ var $author$project$Main$leverages = F3(
 				0,
 				A2(
 					$elm$core$List$map,
-					$pd_andy$tuple_extra$Tuple$Extra$apply(
-						A2($author$project$Main$leverage, trials, n)),
-					$elm$core$Dict$toList(countDict))));
-	});
-var $author$project$Main$divideBy = F2(
-	function (denom, numer) {
-		return numer / denom;
+					$pd_andy$tuple_extra$Tuple$Extra$apply($elm$core$Basics$mul),
+					A2(
+						$elm$core$List$map,
+						$elm$core$Tuple$mapSecond(
+							$author$project$CountDict$divideBy(trials)),
+						valAndFreq))));
 	});
 var $elm$core$Tuple$mapFirst = F2(
 	function (func, _v0) {
@@ -18647,58 +18603,99 @@ var $elm$core$Tuple$mapFirst = F2(
 			func(x),
 			y);
 	});
-var $author$project$Main$residSqr = F2(
-	function (mean, x) {
-		return A2($elm$core$Basics$pow, x - mean, 2);
+var $author$project$CountDict$meanWithTransform = F3(
+	function (f, trials, countDict) {
+		return A2(
+			$author$project$CountDict$expectedValue,
+			trials,
+			A2(
+				$elm$core$List$map,
+				$elm$core$Tuple$mapFirst(f),
+				$elm$core$Dict$toList(countDict)));
+	});
+var $author$project$CountDict$meanProp = F3(
+	function (trials, countDict, sample) {
+		return A3(
+			$author$project$CountDict$meanWithTransform,
+			$author$project$CountDict$divideBy(sample.n),
+			trials,
+			countDict);
+	});
+var $author$project$CountDict$residSqr = F2(
+	function (m, x) {
+		return A2($elm$core$Basics$pow, x - m, 2);
 	});
 var $elm$core$Basics$sqrt = _Basics_sqrt;
-var $author$project$Main$standDev = F4(
-	function (trials, countDict, mean, sample) {
-		return A2(
-			$author$project$Binomial$roundFloat,
-			3,
-			$elm$core$Basics$sqrt(
-				A3(
-					$elm$core$List$foldl,
-					$elm$core$Basics$add,
-					0,
+var $author$project$CountDict$sdWithTranform = F3(
+	function (f, trials, countDict) {
+		var m = A3($author$project$CountDict$meanWithTransform, f, trials, countDict);
+		var adjust = A2($author$project$CountDict$divideBy, trials - 1, trials);
+		var trans = A2(
+			$elm$core$Basics$composeR,
+			f,
+			A2(
+				$elm$core$Basics$composeR,
+				$author$project$CountDict$residSqr(m),
+				$elm$core$Basics$mul(adjust)));
+		return $elm$core$Basics$sqrt(
+			A3(
+				$elm$core$List$foldl,
+				$elm$core$Basics$add,
+				0,
+				A2(
+					$elm$core$List$map,
+					$pd_andy$tuple_extra$Tuple$Extra$apply($elm$core$Basics$mul),
 					A2(
 						$elm$core$List$map,
-						$pd_andy$tuple_extra$Tuple$Extra$apply($elm$core$Basics$mul),
+						$elm$core$Tuple$mapSecond(
+							$author$project$CountDict$divideBy(trials)),
 						A2(
 							$elm$core$List$map,
-							$elm$core$Tuple$mapSecond(
-								$author$project$Main$divideBy(trials - 1)),
-							A2(
-								$elm$core$List$map,
-								$elm$core$Tuple$mapFirst(
-									A2(
-										$elm$core$Basics$composeR,
-										$author$project$Main$divideBy(sample.n),
-										$author$project$Main$residSqr(mean))),
-								$elm$core$Dict$toList(countDict)))))));
+							$elm$core$Tuple$mapFirst(trans),
+							$elm$core$Dict$toList(countDict))))));
+	});
+var $author$project$CountDict$sdProp = F3(
+	function (trials, countDict, sample) {
+		return A3(
+			$author$project$CountDict$sdWithTranform,
+			$author$project$CountDict$divideBy(sample.n),
+			trials,
+			countDict);
 	});
 var $author$project$Main$distSummaryView = function (model) {
+	var sdStr = $elm$html$Html$text(
+		A3(
+			$elm_community$maybe_extra$Maybe$Extra$unwrap,
+			'??',
+			$elm$core$String$fromFloat,
+			A2(
+				$elm$core$Maybe$map,
+				A2(
+					$elm$core$Basics$composeR,
+					A2($author$project$CountDict$sdProp, model.trials, model.ys),
+					$author$project$Utility$roundFloat(4)),
+				model.originalSample)));
 	var nSamples = $elm$html$Html$text(
 		$elm$core$String$fromInt(model.trials));
-	var mean = A2(
-		$elm$core$Maybe$map,
-		A2(
-			$elm$core$Basics$composeR,
-			function ($) {
-				return $.n;
-			},
-			A2($author$project$Main$leverages, model.trials, model.ys)),
+	var n = A3(
+		$elm_community$maybe_extra$Maybe$Extra$unwrap,
+		1000,
+		function ($) {
+			return $.n;
+		},
 		model.originalSample);
 	var meanStr = $elm$html$Html$text(
-		A3($elm_community$maybe_extra$Maybe$Extra$unwrap, '??', $elm$core$String$fromFloat, mean));
-	var sD = A3(
-		$elm$core$Maybe$map2,
-		A2($author$project$Main$standDev, model.trials, model.ys),
-		mean,
-		model.originalSample);
-	var sdStr = $elm$html$Html$text(
-		A3($elm_community$maybe_extra$Maybe$Extra$unwrap, '??', $elm$core$String$fromFloat, sD));
+		A3(
+			$elm_community$maybe_extra$Maybe$Extra$unwrap,
+			'??',
+			$elm$core$String$fromFloat,
+			A2(
+				$elm$core$Maybe$map,
+				A2(
+					$elm$core$Basics$composeR,
+					A2($author$project$CountDict$meanProp, model.trials, model.ys),
+					$author$project$Utility$roundFloat(4)),
+				model.originalSample)));
 	return A3($author$project$Main$distSummaryGrid, meanStr, sdStr, nSamples);
 };
 var $author$project$Main$maybeDistSummaryView = $author$project$Main$maybeShowControls($author$project$Main$distSummaryView);

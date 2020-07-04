@@ -2,6 +2,9 @@ module CountDict exposing (..)
 
 import Dict exposing (..)
 import List.Extra exposing (zip, scanl)
+import Tuple.Extra exposing (apply)
+import Utility exposing (roundFloat)
+import Maybe exposing (withDefault)
 
 type alias Count = (Int, Int)
 
@@ -53,3 +56,61 @@ getPercentiles n trials counts =
         |> Dict.toList
         |> List.map (Tuple.mapBoth (divideBy n) (divideBy trials))
         |> \el -> zip (List.map Tuple.first el) (el |> List.map Tuple.second |> scanl (+) 0 )
+
+
+leverage : Int -> Float -> Int -> Float
+leverage trials val cnt  =
+    let
+        frac = (toFloat cnt) / (toFloat trials)
+    in
+        val * frac
+
+expectedValue : Int -> List (Float, Int) -> Float
+expectedValue trials valAndFreq =
+    valAndFreq
+    |> List.map (Tuple.mapSecond (divideBy trials))
+    |> List.map (Tuple.Extra.apply (*))
+    |> List.foldl (+) 0
+    |> roundFloat 3
+
+
+meanWithTransform : (Int -> Float) -> Int -> CountDict -> Float
+meanWithTransform f trials countDict =
+    countDict
+    |> Dict.toList
+    |> List.map (Tuple.mapFirst f)
+    |> expectedValue trials
+
+meanProp : Int -> CountDict -> { a | n : Int } -> Float
+meanProp trials countDict sample =
+    meanWithTransform (divideBy sample.n) trials countDict 
+
+mean : Int -> CountDict -> Float
+mean = meanWithTransform toFloat
+
+residSqr : Float -> Float -> Float
+residSqr m x = (x - m)^2
+
+
+sdWithTranform : (Int -> Float) -> Int -> CountDict -> Float
+sdWithTranform f trials countDict = 
+    let
+        m = meanWithTransform f trials countDict 
+        -- adjust so that we divide by N - 1
+        adjust = trials |> divideBy (trials - 1)
+        trans = f >> residSqr m >> (*) adjust
+    in
+        countDict
+        |> Dict.toList
+        |> List.map (Tuple.mapFirst trans)
+        |> List.map (Tuple.mapSecond (divideBy trials))
+        |> List.map (Tuple.Extra.apply (*))
+        |> List.foldl (+) 0
+        |> sqrt
+
+sdProp : Int -> CountDict -> { a | n : Int } -> Float
+sdProp trials countDict sample = 
+    sdWithTranform (divideBy sample.n) trials countDict
+
+standDev : Int -> CountDict -> Float
+standDev = sdWithTranform toFloat

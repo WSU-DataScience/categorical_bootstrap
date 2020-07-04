@@ -4,7 +4,7 @@ import Browser
 import Task
 import Random
 import CollectButtons exposing (collectButtons, totalCollectedTxt, resetButton) 
-import CountDict exposing (CountDict, updateCountDict )
+import CountDict exposing (CountDict, updateCountDict, meanProp, sdProp)
 import DataSet exposing (DataSet, LabelFreq, getLabels, createDataFromRegular, createDataFromFreq, getNewData)
 import Sample exposing (Sample, getSuccess, updateSample, makeEmptySample, maybeSampleView, updateBinomGen, sampleConfig, getLeftTailBound, getRightTailBound, getTwoTailBound)
 import Defaults exposing (defaults)
@@ -13,7 +13,7 @@ import Limits exposing (Tail(..), TailBound, TailValue(..), confIntOutput)
 import DistPlot exposing (DistPlotConfig, distPlot)
 import Dropdown exposing (DropdownConfig, genericDropdown)
 import SamplePlot exposing (samplePlot)
-import Utility exposing (apply)
+import Utility exposing (apply, roundFloat)
 import Dict 
 import File exposing (File, name)
 import File.Select as Select
@@ -21,8 +21,8 @@ import Html exposing (Html, button, text, div, h3, h5, h4, b, br)
 import Html.Attributes exposing (style, value, class, id)
 import Html.Events exposing (onClick)
 import List.Extra exposing (group, last)
-import Binomial exposing (roundFloat)
 import Maybe exposing (withDefault)
+import CountDict exposing (divideBy)
 import Tuple.Extra exposing (pairWith, apply) -- See also pairWith for updates
 import Maybe.Extra exposing (isNothing, unwrap)
 import Bootstrap.CDN as CDN
@@ -860,11 +860,10 @@ confLimitsGrid levelButtons output =
     in
         formGroup Col.sm3 Col.sm9 "Confidence Interval" components
 
-collectGrid : Html msg -> Html msg -> Html msg -> Html msg 
-collectGrid buttons numCollected resetButton =
+collectGrid : Html msg -> Html msg -> Html msg 
+collectGrid buttons resetButton =
     let
         components =    [ ("", buttons)
-                        --, ("",  numCollected)
                         , ("", resetButton)
                         ]
     in
@@ -888,10 +887,9 @@ maybeConfIntView : Model -> Html Msg
 maybeConfIntView = maybeShowControls confLimitsView
 
 collectView : Model -> Html Msg
-collectView model =
+collectView _ =
     collectGrid 
         (collectButtons Collect defaults.collectNs)
-        ( totalCollectedTxt model.trials )
         ( resetButton Reset)
 
 maybeCollectView : Model -> Html Msg
@@ -928,56 +926,21 @@ distSummaryGrid mean sd nSamples =
         formGroup Col.sm4 Col.sm8 "Bootstrap Distribution" components
 
 
-leverage : Int -> Int -> Int -> Int -> Float
-leverage trials n val cnt  =
-    let
-        prop = (toFloat val) / (toFloat n)
-        frac = (toFloat cnt) / (toFloat trials)
-    in
-        prop * frac
-
-leverages : Int -> CountDict -> Int -> Float
-leverages trials countDict n =
-    countDict
-    |> Dict.toList  
-    |> List.map (Tuple.Extra.apply (leverage trials n))
-    |> List.foldl (+) 0
-    |> roundFloat 3
-
-residSqr : Float -> Float -> Float
-residSqr mean x = (x - mean)^2
-
-divideBy : Int -> Int -> Float
-divideBy denom numer =
-    (toFloat numer) / (toFloat denom)
-
-standDev : Int -> CountDict -> Float -> Sample -> Float
-standDev trials countDict mean sample =
-    countDict
-    |> Dict.toList  
-    |> List.map (Tuple.mapFirst (divideBy (sample |> .n) >> (residSqr mean)))
-    |> List.map (Tuple.mapSecond (divideBy (trials - 1)))
-    |> List.map (Tuple.Extra.apply (*))
-    |> List.foldl (+) 0
-    |> sqrt
-    |> roundFloat 3
-
 
 distSummaryView : Model -> Html Msg
 distSummaryView model =
     let
-        mean = model.originalSample 
-                |> Maybe.map  (.n >> leverages model.trials model.ys)
-        meanStr = 
-                mean
-                |> unwrap "??" String.fromFloat
-                |> text
-        sD = Maybe.map2 (standDev model.trials model.ys) mean model.originalSample
-        
-        sdStr =
-            sD 
+        meanStr = model.originalSample
+            |> Maybe.map (meanProp model.trials model.ys >> roundFloat 4)
             |> unwrap "??" String.fromFloat
             |> text
+        -- adjust so that we divide by N - 1
+        n = model.originalSample
+            |> unwrap 1000 .n
+        sdStr = model.originalSample   
+                |> Maybe.map (sdProp model.trials model.ys >> roundFloat 4)
+                |> unwrap "??" String.fromFloat
+                |> text
 
         nSamples = model.trials
                  |> String.fromInt
