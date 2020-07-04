@@ -1,11 +1,15 @@
 module Limits exposing (..)
 
 import Double exposing (..)
+import Html exposing (Html)
+import Bootstrap.Button as Button
+import Bootstrap.ButtonGroup as ButtonGroup
 import Display exposing (stringAndAddCommas)
 import Binomial exposing (roundFloat)
 import CountDict exposing (Count, CountDict)
 import Dict
 import Defaults exposing (defaults)
+import String.Interpolate exposing(interpolate)
 
 type alias Limits = (Int, Int)
 
@@ -205,3 +209,42 @@ proportion trials tailTotal =
         p |> roundFloat defaults.pValDigits |> String.fromFloat
     
      
+
+confIntOutput : TailBound -> String
+confIntOutput tailLimit =
+    case tailLimit of
+        NoBounds ->
+            "??"
+
+        Lower l ->
+            [ l |> roundFloat 4 |> String.fromFloat ]
+            |> interpolate "p > {0}"
+        
+        Upper u ->
+            [u |> roundFloat 4 |> String.fromFloat ]
+            |> interpolate "p < {0}"
+
+        TwoTail l u ->
+            [l |> roundFloat 4 |> String.fromFloat
+            , u |> roundFloat 4 |> String.fromFloat
+            ]
+            |> interpolate "{0} < p < {1}"
+
+
+
+tailButtonView : (Tail -> msg) -> Tail -> Html msg
+tailButtonView onclick tail =
+  ButtonGroup.radioButtonGroup []
+          [ ButtonGroup.radioButton
+                  (tail == Left)
+                  [ Button.primary, Button.small, Button.onClick <| onclick Left ]
+                  [ Html.text "Left" ]
+          , ButtonGroup.radioButton
+                  (tail == Right)
+                  [ Button.primary, Button.small, Button.onClick <| onclick Right ]
+                  [ Html.text "Right" ]
+          , ButtonGroup.radioButton
+                  (tail == Two)
+                  [ Button.primary, Button.small, Button.onClick <| onclick Two ]
+                  [ Html.text "Two" ]
+          ]

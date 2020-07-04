@@ -4313,6 +4313,43 @@ function _Browser_load(url)
 
 
 
+var _Bitwise_and = F2(function(a, b)
+{
+	return a & b;
+});
+
+var _Bitwise_or = F2(function(a, b)
+{
+	return a | b;
+});
+
+var _Bitwise_xor = F2(function(a, b)
+{
+	return a ^ b;
+});
+
+function _Bitwise_complement(a)
+{
+	return ~a;
+};
+
+var _Bitwise_shiftLeftBy = F2(function(offset, a)
+{
+	return a << offset;
+});
+
+var _Bitwise_shiftRightBy = F2(function(offset, a)
+{
+	return a >> offset;
+});
+
+var _Bitwise_shiftRightZfBy = F2(function(offset, a)
+{
+	return a >>> offset;
+});
+
+
+
 // DECODER
 
 var _File_decoder = _Json_decodePrim(function(value) {
@@ -4491,43 +4528,6 @@ function _File_toUrl(blob)
 
 
 
-var _Bitwise_and = F2(function(a, b)
-{
-	return a & b;
-});
-
-var _Bitwise_or = F2(function(a, b)
-{
-	return a | b;
-});
-
-var _Bitwise_xor = F2(function(a, b)
-{
-	return a ^ b;
-});
-
-function _Bitwise_complement(a)
-{
-	return ~a;
-};
-
-var _Bitwise_shiftLeftBy = F2(function(offset, a)
-{
-	return a << offset;
-});
-
-var _Bitwise_shiftRightBy = F2(function(offset, a)
-{
-	return a >> offset;
-});
-
-var _Bitwise_shiftRightZfBy = F2(function(offset, a)
-{
-	return a >>> offset;
-});
-
-
-
 function _Time_now(millisToPosix)
 {
 	return _Scheduler_binding(function(callback)
@@ -4571,6 +4571,107 @@ function _Time_getZoneName()
 		callback(_Scheduler_succeed(name));
 	});
 }
+
+
+// CREATE
+
+var _Regex_never = /.^/;
+
+var _Regex_fromStringWith = F2(function(options, string)
+{
+	var flags = 'g';
+	if (options.multiline) { flags += 'm'; }
+	if (options.caseInsensitive) { flags += 'i'; }
+
+	try
+	{
+		return $elm$core$Maybe$Just(new RegExp(string, flags));
+	}
+	catch(error)
+	{
+		return $elm$core$Maybe$Nothing;
+	}
+});
+
+
+// USE
+
+var _Regex_contains = F2(function(re, string)
+{
+	return string.match(re) !== null;
+});
+
+
+var _Regex_findAtMost = F3(function(n, re, str)
+{
+	var out = [];
+	var number = 0;
+	var string = str;
+	var lastIndex = re.lastIndex;
+	var prevLastIndex = -1;
+	var result;
+	while (number++ < n && (result = re.exec(string)))
+	{
+		if (prevLastIndex == re.lastIndex) break;
+		var i = result.length - 1;
+		var subs = new Array(i);
+		while (i > 0)
+		{
+			var submatch = result[i];
+			subs[--i] = submatch
+				? $elm$core$Maybe$Just(submatch)
+				: $elm$core$Maybe$Nothing;
+		}
+		out.push(A4($elm$regex$Regex$Match, result[0], result.index, number, _List_fromArray(subs)));
+		prevLastIndex = re.lastIndex;
+	}
+	re.lastIndex = lastIndex;
+	return _List_fromArray(out);
+});
+
+
+var _Regex_replaceAtMost = F4(function(n, re, replacer, string)
+{
+	var count = 0;
+	function jsReplacer(match)
+	{
+		if (count++ >= n)
+		{
+			return match;
+		}
+		var i = arguments.length - 3;
+		var submatches = new Array(i);
+		while (i > 0)
+		{
+			var submatch = arguments[i];
+			submatches[--i] = submatch
+				? $elm$core$Maybe$Just(submatch)
+				: $elm$core$Maybe$Nothing;
+		}
+		return replacer(A4($elm$regex$Regex$Match, match, arguments[arguments.length - 2], count, _List_fromArray(submatches)));
+	}
+	return string.replace(re, jsReplacer);
+});
+
+var _Regex_splitAtMost = F3(function(n, re, str)
+{
+	var string = str;
+	var out = [];
+	var start = re.lastIndex;
+	var restoreLastIndex = re.lastIndex;
+	while (n--)
+	{
+		var result = re.exec(string);
+		if (!result) break;
+		out.push(string.slice(start, result.index));
+		start = re.lastIndex;
+	}
+	out.push(string.slice(start));
+	re.lastIndex = restoreLastIndex;
+	return _List_fromArray(out);
+});
+
+var _Regex_infinity = Infinity;
 var $elm$core$Basics$EQ = {$: 'EQ'};
 var $elm$core$Basics$GT = {$: 'GT'};
 var $elm$core$Basics$LT = {$: 'LT'};
@@ -5361,8 +5462,7 @@ var $elm$core$Task$perform = F2(
 	});
 var $elm$browser$Browser$element = _Browser_element;
 var $author$project$Limits$NoBounds = {$: 'NoBounds'};
-var $author$project$Main$NoType = {$: 'NoType'};
-var $author$project$Limits$None = {$: 'None'};
+var $author$project$ReadCSV$NoType = {$: 'NoType'};
 var $author$project$DataSet$LabelFreq = F2(
 	function (label, count) {
 		return {count: count, label: label};
@@ -5423,7 +5523,7 @@ var $rundis$elm_bootstrap$Bootstrap$Dropdown$initialState = $rundis$elm_bootstra
 		status: $rundis$elm_bootstrap$Bootstrap$Dropdown$Closed,
 		toggleSize: A4($rundis$elm_bootstrap$Bootstrap$Utilities$DomHelper$Area, 0, 0, 0, 0)
 	});
-var $author$project$Main$initModel = {binomGen: $elm$core$Maybe$Nothing, bootstrapSample: $elm$core$Maybe$Nothing, counts: $elm$core$Maybe$Nothing, csv: $elm$core$Maybe$Nothing, dataDropState: $rundis$elm_bootstrap$Bootstrap$Dropdown$initialState, datasets: $author$project$DataSet$datasets, distPlotConfig: $elm$core$Maybe$Nothing, fileName: 'None', fileType: $author$project$Main$NoType, isProportion: true, level: $elm$core$Maybe$Nothing, modalVisibility: $rundis$elm_bootstrap$Bootstrap$Modal$hidden, originalSample: $elm$core$Maybe$Nothing, perspectiveData: $elm$core$Maybe$Nothing, selected: $elm$core$Maybe$Nothing, selectedData: $elm$core$Maybe$Nothing, selectedVariable: $elm$core$Maybe$Nothing, successDropState: $rundis$elm_bootstrap$Bootstrap$Dropdown$initialState, tail: $author$project$Limits$None, tailLimit: $author$project$Limits$NoBounds, trials: 0, variables: $elm$core$Maybe$Nothing, ys: $elm$core$Dict$empty};
+var $author$project$Main$initModel = {binomGen: $elm$core$Maybe$Nothing, bootstrapSample: $elm$core$Maybe$Nothing, counts: $elm$core$Maybe$Nothing, csv: $elm$core$Maybe$Nothing, dataDropState: $rundis$elm_bootstrap$Bootstrap$Dropdown$initialState, datasets: $author$project$DataSet$datasets, distPlotConfig: $elm$core$Maybe$Nothing, fileName: 'None', fileType: $author$project$ReadCSV$NoType, isProportion: true, level: $elm$core$Maybe$Nothing, modalVisibility: $rundis$elm_bootstrap$Bootstrap$Modal$hidden, originalSample: $elm$core$Maybe$Nothing, perspectiveData: $elm$core$Maybe$Nothing, selected: $elm$core$Maybe$Nothing, selectedData: $elm$core$Maybe$Nothing, selectedVariable: $elm$core$Maybe$Nothing, successDropState: $rundis$elm_bootstrap$Bootstrap$Dropdown$initialState, tailLimit: $author$project$Limits$NoBounds, trials: 0, variables: $elm$core$Maybe$Nothing, ys: $elm$core$Dict$empty};
 var $elm$core$Platform$Cmd$batch = _Platform_batch;
 var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
 var $author$project$Main$init = function (_v0) {
@@ -6010,19 +6110,20 @@ var $author$project$Main$CsvLoaded = function (a) {
 var $author$project$Main$CsvSelected = function (a) {
 	return {$: 'CsvSelected', a: a};
 };
-var $author$project$Main$Frequency = {$: 'Frequency'};
 var $author$project$Main$NewStatistics = function (a) {
 	return {$: 'NewStatistics', a: a};
 };
-var $author$project$Main$Regular = {$: 'Regular'};
-var $elm$core$Maybe$andThen = F2(
-	function (callback, maybeValue) {
-		if (maybeValue.$ === 'Just') {
-			var value = maybeValue.a;
-			return callback(value);
-		} else {
-			return $elm$core$Maybe$Nothing;
-		}
+var $author$project$Main$andBatchCmds = F2(
+	function (batch, finalModel) {
+		return _Utils_Tuple2(
+			finalModel,
+			$elm$core$Platform$Cmd$batch(
+				A2(
+					$elm$core$List$map,
+					function (b) {
+						return b(finalModel);
+					},
+					batch)));
 	});
 var $author$project$Main$bootstrapPlotToJS = _Platform_outgoingPort('bootstrapPlotToJS', $elm$core$Basics$identity);
 var $gicentre$elm_vegalite$VegaLite$Nominal = {$: 'Nominal'};
@@ -10930,11 +11031,11 @@ var $gicentre$elm_vegalite$VegaLite$width = function (w) {
 var $author$project$SamplePlot$samplePlot = function (sample) {
 	var xs = _List_fromArray(
 		[sample.successLbl, sample.failureLbl]);
-	var n = sample.n;
-	var pFailure = sample.numFailures / n;
-	var pSuccess = sample.numSuccess / n;
+	var pSuccess = (!sample.n) ? 0 : A2($elm$core$Maybe$withDefault, 0, sample.p);
+	var pFailure = (!sample.n) ? 0 : (1 - pSuccess);
 	var ys = _List_fromArray(
 		[pSuccess, pFailure]);
+	var n = sample.n;
 	var enc = A2(
 		$elm$core$Basics$composeL,
 		A2(
@@ -11043,7 +11144,7 @@ var $gicentre$elm_vegalite$VegaLite$AxTitle = function (a) {
 var $gicentre$elm_vegalite$VegaLite$axTitle = $gicentre$elm_vegalite$VegaLite$AxTitle;
 var $author$project$Defaults$defaults = {
 	collectNs: _List_fromArray(
-		[1, 10, 100, 1000, 10000, 100000]),
+		[1, 10, 100, 1000, 10000]),
 	distMinHeight: 100.0,
 	distPlotHeight: 525,
 	distPlotWidth: 700,
@@ -12035,13 +12136,16 @@ var $author$project$Main$distPlotCmd = function (model) {
 			$author$project$DistPlot$distPlot(config));
 	}
 };
-var $elm$file$File$Select$file = F2(
-	function (mimes, toMsg) {
-		return A2(
-			$elm$core$Task$perform,
-			toMsg,
-			_File_uploadOne(mimes));
+var $author$project$Main$samplePlotToJS = _Platform_outgoingPort('samplePlotToJS', $elm$core$Basics$identity);
+var $author$project$Main$originalPlotCmd = A2(
+	$author$project$Main$samplePlotCmd,
+	$author$project$Main$samplePlotToJS,
+	function ($) {
+		return $.originalSample;
 	});
+var $author$project$Main$andRedrawPlots = $author$project$Main$andBatchCmds(
+	_List_fromArray(
+		[$author$project$Main$originalPlotCmd, $author$project$Main$bootstrapPlotCmd, $author$project$Main$distPlotCmd]));
 var $elm_community$list_extra$List$Extra$find = F2(
 	function (predicate, list) {
 		find:
@@ -12063,145 +12167,64 @@ var $elm_community$list_extra$List$Extra$find = F2(
 			}
 		}
 	});
-var $elm$random$Random$Generator = function (a) {
-	return {$: 'Generator', a: a};
-};
-var $elm$core$Basics$negate = function (n) {
-	return -n;
-};
-var $elm$core$Basics$abs = function (n) {
-	return (n < 0) ? (-n) : n;
-};
-var $elm$core$Bitwise$and = _Bitwise_and;
-var $elm$random$Random$Seed = F2(
-	function (a, b) {
-		return {$: 'Seed', a: a, b: b};
-	});
-var $elm$core$Bitwise$shiftRightZfBy = _Bitwise_shiftRightZfBy;
-var $elm$random$Random$next = function (_v0) {
-	var state0 = _v0.a;
-	var incr = _v0.b;
-	return A2($elm$random$Random$Seed, ((state0 * 1664525) + incr) >>> 0, incr);
-};
-var $elm$core$Bitwise$xor = _Bitwise_xor;
-var $elm$random$Random$peel = function (_v0) {
-	var state = _v0.a;
-	var word = (state ^ (state >>> ((state >>> 28) + 4))) * 277803737;
-	return ((word >>> 22) ^ word) >>> 0;
-};
-var $elm$random$Random$float = F2(
-	function (a, b) {
-		return $elm$random$Random$Generator(
-			function (seed0) {
-				var seed1 = $elm$random$Random$next(seed0);
-				var range = $elm$core$Basics$abs(b - a);
-				var n1 = $elm$random$Random$peel(seed1);
-				var n0 = $elm$random$Random$peel(seed0);
-				var lo = (134217727 & n1) * 1.0;
-				var hi = (67108863 & n0) * 1.0;
-				var val = ((hi * 134217728.0) + lo) / 9007199254740992.0;
-				var scaled = (val * range) + a;
-				return _Utils_Tuple2(
-					scaled,
-					$elm$random$Random$next(seed1));
-			});
-	});
-var $elm$random$Random$Generate = function (a) {
-	return {$: 'Generate', a: a};
-};
-var $elm$random$Random$initialSeed = function (x) {
-	var _v0 = $elm$random$Random$next(
-		A2($elm$random$Random$Seed, 0, 1013904223));
-	var state1 = _v0.a;
-	var incr = _v0.b;
-	var state2 = (state1 + x) >>> 0;
-	return $elm$random$Random$next(
-		A2($elm$random$Random$Seed, state2, incr));
-};
-var $elm$time$Time$Name = function (a) {
-	return {$: 'Name', a: a};
-};
-var $elm$time$Time$Offset = function (a) {
-	return {$: 'Offset', a: a};
-};
-var $elm$time$Time$Zone = F2(
-	function (a, b) {
-		return {$: 'Zone', a: a, b: b};
-	});
-var $elm$time$Time$customZone = $elm$time$Time$Zone;
-var $elm$time$Time$now = _Time_now($elm$time$Time$millisToPosix);
-var $elm$time$Time$posixToMillis = function (_v0) {
-	var millis = _v0.a;
-	return millis;
-};
-var $elm$random$Random$init = A2(
-	$elm$core$Task$andThen,
-	function (time) {
-		return $elm$core$Task$succeed(
-			$elm$random$Random$initialSeed(
-				$elm$time$Time$posixToMillis(time)));
-	},
-	$elm$time$Time$now);
-var $elm$random$Random$step = F2(
-	function (_v0, seed) {
-		var generator = _v0.a;
-		return generator(seed);
-	});
-var $elm$random$Random$onEffects = F3(
-	function (router, commands, seed) {
-		if (!commands.b) {
-			return $elm$core$Task$succeed(seed);
-		} else {
-			var generator = commands.a.a;
-			var rest = commands.b;
-			var _v1 = A2($elm$random$Random$step, generator, seed);
-			var value = _v1.a;
-			var newSeed = _v1.b;
-			return A2(
-				$elm$core$Task$andThen,
-				function (_v2) {
-					return A3($elm$random$Random$onEffects, router, rest, newSeed);
-				},
-				A2($elm$core$Platform$sendToApp, router, value));
-		}
-	});
-var $elm$random$Random$onSelfMsg = F3(
-	function (_v0, _v1, seed) {
-		return $elm$core$Task$succeed(seed);
-	});
-var $elm$random$Random$map = F2(
-	function (func, _v0) {
-		var genA = _v0.a;
-		return $elm$random$Random$Generator(
-			function (seed0) {
-				var _v1 = genA(seed0);
-				var a = _v1.a;
-				var seed1 = _v1.b;
-				return _Utils_Tuple2(
-					func(a),
-					seed1);
-			});
-	});
-var $elm$random$Random$cmdMap = F2(
-	function (func, _v0) {
-		var generator = _v0.a;
-		return $elm$random$Random$Generate(
-			A2($elm$random$Random$map, func, generator));
-	});
-_Platform_effectManagers['Random'] = _Platform_createManager($elm$random$Random$init, $elm$random$Random$onEffects, $elm$random$Random$onSelfMsg, $elm$random$Random$cmdMap);
-var $elm$random$Random$command = _Platform_leaf('Random');
-var $elm$random$Random$generate = F2(
-	function (tagger, generator) {
-		return $elm$random$Random$command(
-			$elm$random$Random$Generate(
-				A2($elm$random$Random$map, tagger, generator)));
-	});
 var $author$project$DataSet$getNewData = function (dataName) {
 	return $elm_community$list_extra$List$Extra$find(
 		function (d) {
 			return _Utils_eq(d.name, dataName);
 		});
 };
+var $author$project$Main$changeData = F2(
+	function (name, model) {
+		var data = A2($author$project$DataSet$getNewData, name, model.datasets);
+		return _Utils_update(
+			model,
+			{originalSample: $elm$core$Maybe$Nothing, selected: data});
+	});
+var $author$project$ReadCSV$Frequency = {$: 'Frequency'};
+var $author$project$ReadCSV$Regular = {$: 'Regular'};
+var $author$project$ReadCSV$getFileType = function (typeLbl) {
+	switch (typeLbl) {
+		case 'reg':
+			return $author$project$ReadCSV$Regular;
+		case 'freq':
+			return $author$project$ReadCSV$Frequency;
+		default:
+			return $author$project$ReadCSV$NoType;
+	}
+};
+var $author$project$Main$changeFileType = F2(
+	function (typeString, model) {
+		return _Utils_update(
+			model,
+			{
+				fileType: $author$project$ReadCSV$getFileType(typeString)
+			});
+	});
+var $author$project$Main$changeLevel = F2(
+	function (level, model) {
+		return _Utils_update(
+			model,
+			{
+				level: $elm$core$Maybe$Just(level)
+			});
+	});
+var $elm$core$Maybe$andThen = F2(
+	function (callback, maybeValue) {
+		if (maybeValue.$ === 'Just') {
+			var value = maybeValue.a;
+			return callback(value);
+		} else {
+			return $elm$core$Maybe$Nothing;
+		}
+	});
+var $author$project$Sample$divide = F2(
+	function (x, n) {
+		if (!n) {
+			return $elm$core$Maybe$Nothing;
+		} else {
+			return $elm$core$Maybe$Just(x / n);
+		}
+	});
 var $author$project$DataSet$getCounts = function (data) {
 	return A2(
 		$elm$core$List$map,
@@ -12227,7 +12250,7 @@ var $elm$core$Maybe$map = F2(
 			return $elm$core$Maybe$Nothing;
 		}
 	});
-var $author$project$DataSet$getSuccess = F2(
+var $author$project$Sample$getSuccess = F2(
 	function (txt, data) {
 		var n = $author$project$DataSet$getN(data);
 		return A2(
@@ -12244,6 +12267,7 @@ var $author$project$DataSet$getSuccess = F2(
 					numSuccess: function ($) {
 						return $.count;
 					}(labelFreq),
+					p: A2($author$project$Sample$divide, labelFreq.count, n),
 					successLbl: function ($) {
 						return $.label;
 					}(labelFreq)
@@ -12260,193 +12284,18 @@ var $author$project$DataSet$getSuccess = F2(
 				},
 				data.frequencies));
 	});
-var $elm$core$List$filter = F2(
-	function (isGood, list) {
-		return A3(
-			$elm$core$List$foldr,
-			F2(
-				function (x, xs) {
-					return isGood(x) ? A2($elm$core$List$cons, x, xs) : xs;
-				}),
-			_List_Nil,
-			list);
-	});
-var $author$project$ReadCSV$clearBlankRows = $elm$core$List$filter(
-	function (s) {
-		return $elm$core$String$length(s) > 0;
-	});
-var $author$project$ReadCSV$colIdx = function (rawheader) {
-	return function (h) {
-		return A2(
-			$elm$core$Tuple$mapSecond,
-			$elm$core$List$range(0),
-			A2(
-				$elm$core$Tuple$mapSecond,
-				function (n) {
-					return n - 1;
-				},
-				A2(
-					$elm$core$Tuple$mapSecond,
-					$elm$core$List$length,
-					_Utils_Tuple2(h, h))));
-	}(
-		A2($elm$core$String$split, ',', rawheader));
-};
-var $elm$core$List$drop = F2(
-	function (n, list) {
-		drop:
-		while (true) {
-			if (n <= 0) {
-				return list;
-			} else {
-				if (!list.b) {
-					return list;
-				} else {
-					var x = list.a;
-					var xs = list.b;
-					var $temp$n = n - 1,
-						$temp$list = xs;
-					n = $temp$n;
-					list = $temp$list;
-					continue drop;
-				}
-			}
-		}
-	});
-var $elm_community$list_extra$List$Extra$getAt = F2(
-	function (idx, xs) {
-		return (idx < 0) ? $elm$core$Maybe$Nothing : $elm$core$List$head(
-			A2($elm$core$List$drop, idx, xs));
-	});
-var $author$project$ReadCSV$getCol = F2(
-	function (rows, i) {
-		return A2(
-			$elm$core$List$map,
-			A2(
-				$elm$core$Basics$composeR,
-				$elm_community$list_extra$List$Extra$getAt(i),
-				$elm$core$Maybe$withDefault('')),
-			rows);
-	});
-var $elm$core$Tuple$pair = F2(
-	function (a, b) {
-		return _Utils_Tuple2(a, b);
-	});
-var $elm_community$list_extra$List$Extra$zip = $elm$core$List$map2($elm$core$Tuple$pair);
-var $author$project$ReadCSV$getCols = function (pair) {
-	var _v0 = pair;
-	var _v1 = _v0.a;
-	var header = _v1.a;
-	var idx = _v1.b;
-	var rows = _v0.b;
-	var cols = A2(
-		$elm$core$List$map,
-		$author$project$ReadCSV$getCol(rows),
-		idx);
-	return A2($elm_community$list_extra$List$Extra$zip, header, cols);
-};
-var $elm_community$list_extra$List$Extra$uncons = function (list) {
-	if (!list.b) {
-		return $elm$core$Maybe$Nothing;
-	} else {
-		var first = list.a;
-		var rest = list.b;
-		return $elm$core$Maybe$Just(
-			_Utils_Tuple2(first, rest));
-	}
-};
-var $author$project$ReadCSV$getHeadTail = function (rawfile) {
-	var lines = A2(
-		$elm$core$String$split,
-		'\n',
-		$elm$core$String$trim(rawfile));
-	return $elm_community$list_extra$List$Extra$uncons(lines);
-};
-var $elm$core$Tuple$mapBoth = F3(
-	function (funcA, funcB, _v0) {
-		var x = _v0.a;
-		var y = _v0.b;
-		return _Utils_Tuple2(
-			funcA(x),
-			funcB(y));
-	});
-var $author$project$ReadCSV$splitBody = function (body) {
-	return A2(
-		$elm$core$List$map,
-		$elm$core$String$split(','),
-		body);
-};
-var $author$project$ReadCSV$getVariables = function (rawfile) {
-	return A2(
-		$elm$core$Maybe$map,
-		$author$project$ReadCSV$getCols,
-		A2(
-			$elm$core$Maybe$map,
-			A2($elm$core$Tuple$mapBoth, $author$project$ReadCSV$colIdx, $author$project$ReadCSV$splitBody),
-			A2(
-				$elm$core$Maybe$map,
-				$elm$core$Tuple$mapSecond($author$project$ReadCSV$clearBlankRows),
-				$author$project$ReadCSV$getHeadTail(rawfile))));
-};
-var $elm$random$Random$listHelp = F4(
-	function (revList, n, gen, seed) {
-		listHelp:
-		while (true) {
-			if (n < 1) {
-				return _Utils_Tuple2(revList, seed);
-			} else {
-				var _v0 = gen(seed);
-				var value = _v0.a;
-				var newSeed = _v0.b;
-				var $temp$revList = A2($elm$core$List$cons, value, revList),
-					$temp$n = n - 1,
-					$temp$gen = gen,
-					$temp$seed = newSeed;
-				revList = $temp$revList;
-				n = $temp$n;
-				gen = $temp$gen;
-				seed = $temp$seed;
-				continue listHelp;
-			}
-		}
-	});
-var $elm$random$Random$list = F2(
-	function (n, _v0) {
-		var gen = _v0.a;
-		return $elm$random$Random$Generator(
-			function (seed) {
-				return A4($elm$random$Random$listHelp, _List_Nil, n, gen, seed);
-			});
-	});
-var $elm$file$File$name = _File_name;
-var $author$project$Main$samplePlotToJS = _Platform_outgoingPort('samplePlotToJS', $elm$core$Basics$identity);
-var $author$project$Main$originalPlotCmd = A2(
-	$author$project$Main$samplePlotCmd,
-	$author$project$Main$samplePlotToJS,
-	function ($) {
-		return $.originalSample;
-	});
-var $author$project$DataSet$makeEmptySample = function (sample) {
+var $author$project$Sample$makeEmptySample = function (sample) {
 	return _Utils_update(
 		sample,
-		{numFailures: 0, numSuccess: 0});
+		{numFailures: 0, numSuccess: 0, p: $elm$core$Maybe$Nothing});
 };
-var $author$project$Main$resetBootstrap = F2(
-	function (sample, model) {
-		return _Utils_update(
-			model,
-			{
-				bootstrapSample: A2($elm$core$Maybe$map, $author$project$DataSet$makeEmptySample, sample)
-			});
-	});
-var $author$project$Main$resetTrials = function (model) {
+var $author$project$Main$resetBootstrap = function (model) {
 	return _Utils_update(
 		model,
-		{level: $elm$core$Maybe$Nothing, tail: $author$project$Limits$None, tailLimit: $author$project$Limits$NoBounds, trials: 0, ys: $elm$core$Dict$empty});
+		{
+			bootstrapSample: A2($elm$core$Maybe$map, $author$project$Sample$makeEmptySample, model.originalSample)
+		});
 };
-var $rundis$elm_bootstrap$Bootstrap$Modal$Show = {$: 'Show'};
-var $rundis$elm_bootstrap$Bootstrap$Modal$shown = $rundis$elm_bootstrap$Bootstrap$Modal$Show;
-var $elm$file$File$toString = _File_toString;
 var $author$project$Binomial$initBar = F3(
 	function (a, i, p) {
 		return {i: i, k: i, pi: p, v: (i + 1) * a};
@@ -12461,6 +12310,8 @@ var $author$project$Binomial$initSqrHist = function (ps) {
 		ks,
 		ps);
 };
+var $elm$core$Bitwise$and = _Bitwise_and;
+var $elm$core$Bitwise$shiftRightZfBy = _Bitwise_shiftRightZfBy;
 var $elm$core$Array$bitMask = 4294967295 >>> (32 - $elm$core$Array$shiftStep);
 var $elm$core$Basics$ge = _Utils_ge;
 var $elm$core$Elm$JsArray$unsafeGet = _JsArray_unsafeGet;
@@ -12501,6 +12352,9 @@ var $elm$core$Array$get = F2(
 			A2($elm$core$Elm$JsArray$unsafeGet, $elm$core$Array$bitMask & index, tail)) : $elm$core$Maybe$Just(
 			A3($elm$core$Array$getHelp, startShift, index, tree)));
 	});
+var $elm$core$Basics$negate = function (n) {
+	return -n;
+};
 var $author$project$Binomial$convertToSquareHistogram = F5(
 	function (n, vs, ks, min, u) {
 		var j = $elm$core$Basics$floor(u * n);
@@ -12809,19 +12663,30 @@ var $author$project$Binomial$getBinomGen = F2(
 		var min = _v0.a;
 		return A2($author$project$Binomial$makeConvertToSquareHistogram, min, bars);
 	});
-var $author$project$Main$updateBinomGen = function (sample) {
-	var successes = sample.numSuccess;
-	var n = sample.n;
-	var nF = n;
-	var p = successes / nF;
-	return A2($author$project$Binomial$getBinomGen, n, p);
+var $author$project$Sample$binomGen = function (sample) {
+	return A2(
+		$elm$core$Maybe$map,
+		$author$project$Binomial$getBinomGen(sample.n),
+		sample.p);
+};
+var $elm_community$maybe_extra$Maybe$Extra$unwrap = F3(
+	function (_default, f, m) {
+		if (m.$ === 'Nothing') {
+			return _default;
+		} else {
+			var a = m.a;
+			return f(a);
+		}
+	});
+var $author$project$Sample$updateBinomGen = function (sample) {
+	return A3($elm_community$maybe_extra$Maybe$Extra$unwrap, $elm$core$Maybe$Nothing, $author$project$Sample$binomGen, sample);
 };
 var $author$project$Main$updateBinom = F2(
 	function (newSample, model) {
 		return _Utils_update(
 			model,
 			{
-				binomGen: A2($elm$core$Maybe$map, $author$project$Main$updateBinomGen, newSample)
+				binomGen: $author$project$Sample$updateBinomGen(newSample)
 			});
 	});
 var $gicentre$elm_vegalite$VegaLite$Circle = {$: 'Circle'};
@@ -12883,6 +12748,14 @@ var $author$project$DistPlot$combineDistColumns = F2(
 		return _Utils_Tuple2(
 			A2($elm$core$List$cons, newX, oldXs),
 			A2($elm$core$List$cons, newY, oldYs));
+	});
+var $elm$core$Tuple$mapBoth = F3(
+	function (funcA, funcB, _v0) {
+		var x = _v0.a;
+		var y = _v0.b;
+		return _Utils_Tuple2(
+			funcA(x),
+			funcB(y));
 	});
 var $author$project$DistPlot$distColumns = function (yDict) {
 	return A3(
@@ -12951,14 +12824,16 @@ var $elm$core$List$minimum = function (list) {
 		return $elm$core$Maybe$Nothing;
 	}
 };
-var $author$project$Main$sampleConfig = F2(
-	function (model, sample) {
+var $author$project$Sample$sampleConfig = F4(
+	function (trials, countDict, tailLimit, sample) {
 		var n = sample.n;
-		var p = sample.numSuccess / n;
+		var p = function (x) {
+			return x / n;
+		}(sample.numSuccess);
 		var mean = n * p;
-		var tailExpr = A2($author$project$DistPlot$getTailExpression, mean, model.tailLimit);
-		var isLarge = _Utils_cmp(model.trials, $author$project$Defaults$defaults.largePlot) > 0;
-		var _v0 = A2($author$project$DistPlot$getXandY, isLarge, model.ys);
+		var tailExpr = A2($author$project$DistPlot$getTailExpression, mean, tailLimit);
+		var isLarge = _Utils_cmp(trials, $author$project$Defaults$defaults.largePlot) > 0;
+		var _v0 = A2($author$project$DistPlot$getXandY, isLarge, countDict);
 		var xs = _v0.a;
 		var ys = _v0.b;
 		var largestX = A2(
@@ -12978,7 +12853,7 @@ var $author$project$Main$sampleConfig = F2(
 		return {
 			mark: isLarge ? $gicentre$elm_vegalite$VegaLite$bar : $gicentre$elm_vegalite$VegaLite$circle,
 			maxX: A2($elm$core$Basics$min, 1, largestX / n),
-			maxY: $author$project$DistPlot$getMaxHeight(model.ys),
+			maxY: $author$project$DistPlot$getMaxHeight(countDict),
 			minX: A2($elm$core$Basics$max, 0, smallestX / n),
 			tailExpression: tailExpr,
 			xAxisTitle: 'Proportion of ' + sample.successLbl,
@@ -12986,23 +12861,58 @@ var $author$project$Main$sampleConfig = F2(
 			ys: ys
 		};
 	});
+var $author$project$Main$updateSampleConfig = F2(
+	function (model, s) {
+		return A4($author$project$Sample$sampleConfig, model.trials, model.ys, model.tailLimit, s);
+	});
 var $author$project$Main$updateDistPlotConfig = function (model) {
-	var _v0 = model.originalSample;
-	if (_v0.$ === 'Nothing') {
-		return model;
-	} else {
-		var sample = _v0.a;
+	return _Utils_update(
+		model,
+		{
+			distPlotConfig: A2(
+				$elm$core$Maybe$map,
+				$author$project$Main$updateSampleConfig(model),
+				model.originalSample)
+		});
+};
+var $author$project$Main$updateOriginal = F2(
+	function (newSample, model) {
 		return _Utils_update(
 			model,
-			{
-				distPlotConfig: $elm$core$Maybe$Just(
-					A2($author$project$Main$sampleConfig, model, sample))
-			});
-	}
-};
-var $author$project$Main$apply = F2(
-	function (f, x) {
-		return f(x);
+			{originalSample: newSample});
+	});
+var $author$project$Limits$TwoTail = F2(
+	function (a, b) {
+		return {$: 'TwoTail', a: a, b: b};
+	});
+var $author$project$CountDict$divideBy = F2(
+	function (denom, numer) {
+		return numer / denom;
+	});
+var $elm$core$Tuple$pair = F2(
+	function (a, b) {
+		return _Utils_Tuple2(a, b);
+	});
+var $elm_community$list_extra$List$Extra$zip = $elm$core$List$map2($elm$core$Tuple$pair);
+var $author$project$CountDict$getPercentiles = F3(
+	function (n, trials, counts) {
+		return function (el) {
+			return A2(
+				$elm_community$list_extra$List$Extra$zip,
+				A2($elm$core$List$map, $elm$core$Tuple$first, el),
+				A3(
+					$elm_community$list_extra$List$Extra$scanl,
+					$elm$core$Basics$add,
+					0,
+					A2($elm$core$List$map, $elm$core$Tuple$second, el)));
+		}(
+			A2(
+				$elm$core$List$map,
+				A2(
+					$elm$core$Tuple$mapBoth,
+					$author$project$CountDict$divideBy(n),
+					$author$project$CountDict$divideBy(trials)),
+				$elm$core$Dict$toList(counts)));
 	});
 var $elm_community$list_extra$List$Extra$last = function (items) {
 	last:
@@ -13022,6 +12932,44 @@ var $elm_community$list_extra$List$Extra$last = function (items) {
 		}
 	}
 };
+var $elm_community$list_extra$List$Extra$takeWhile = function (predicate) {
+	var takeWhileMemo = F2(
+		function (memo, list) {
+			takeWhileMemo:
+			while (true) {
+				if (!list.b) {
+					return $elm$core$List$reverse(memo);
+				} else {
+					var x = list.a;
+					var xs = list.b;
+					if (predicate(x)) {
+						var $temp$memo = A2($elm$core$List$cons, x, memo),
+							$temp$list = xs;
+						memo = $temp$memo;
+						list = $temp$list;
+						continue takeWhileMemo;
+					} else {
+						return $elm$core$List$reverse(memo);
+					}
+				}
+			}
+		});
+	return takeWhileMemo(_List_Nil);
+};
+var $author$project$Sample$leftTailBound = F2(
+	function (tailArea, percentiles) {
+		return A2(
+			$elm$core$Maybe$map,
+			$elm$core$Tuple$first,
+			$elm_community$list_extra$List$Extra$last(
+				A2(
+					$elm_community$list_extra$List$Extra$takeWhile,
+					A2(
+						$elm$core$Basics$composeR,
+						$elm$core$Tuple$second,
+						$elm$core$Basics$gt(tailArea)),
+					percentiles)));
+	});
 var $elm$core$Maybe$map2 = F3(
 	function (func, ma, mb) {
 		if (ma.$ === 'Nothing') {
@@ -13037,29 +12985,499 @@ var $elm$core$Maybe$map2 = F3(
 			}
 		}
 	});
-var $author$project$DataSet$updateSample = F2(
+var $elm_community$list_extra$List$Extra$dropWhileRight = function (p) {
+	return A2(
+		$elm$core$List$foldr,
+		F2(
+			function (x, xs) {
+				return (p(x) && $elm$core$List$isEmpty(xs)) ? _List_Nil : A2($elm$core$List$cons, x, xs);
+			}),
+		_List_Nil);
+};
+var $author$project$Sample$rightTailBound = F2(
+	function (tailArea, percentiles) {
+		var oneMinus = 1 - tailArea;
+		return A2(
+			$elm$core$Maybe$map,
+			$elm$core$Tuple$first,
+			$elm_community$list_extra$List$Extra$last(
+				A2(
+					$elm_community$list_extra$List$Extra$dropWhileRight,
+					A2(
+						$elm$core$Basics$composeR,
+						$elm$core$Tuple$second,
+						$elm$core$Basics$lt(oneMinus)),
+					percentiles)));
+	});
+var $author$project$Sample$getTwoTailBound = F4(
+	function (trials, level, countDict, sample) {
+		var tailArea = (1 - level) / 2;
+		var percentiles = A3($author$project$CountDict$getPercentiles, sample.n, trials, countDict);
+		var right = A2($author$project$Sample$rightTailBound, tailArea, percentiles);
+		var left = A2($author$project$Sample$leftTailBound, tailArea, percentiles);
+		return A2(
+			$elm$core$Maybe$withDefault,
+			$author$project$Limits$NoBounds,
+			A3($elm$core$Maybe$map2, $author$project$Limits$TwoTail, left, right));
+	});
+var $author$project$Main$getBound = function (model) {
+	var _v0 = _Utils_Tuple2(model.originalSample, model.level);
+	if ((_v0.a.$ === 'Just') && (_v0.b.$ === 'Just')) {
+		var sample = _v0.a.a;
+		var level = _v0.b.a;
+		return A4($author$project$Sample$getTwoTailBound, model.trials, level, model.ys, sample);
+	} else {
+		return $author$project$Limits$NoBounds;
+	}
+};
+var $author$project$Main$updateTailBounds = function (model) {
+	return _Utils_update(
+		model,
+		{
+			tailLimit: $author$project$Main$getBound(model)
+		});
+};
+var $author$project$Main$changeSuccess = F2(
+	function (name, model) {
+		var newSample = A2(
+			$elm$core$Maybe$andThen,
+			$author$project$Sample$getSuccess(name),
+			model.selected);
+		return $author$project$Main$updateTailBounds(
+			$author$project$Main$updateDistPlotConfig(
+				A2(
+					$author$project$Main$updateBinom,
+					newSample,
+					$author$project$Main$resetBootstrap(
+						A2($author$project$Main$updateOriginal, newSample, model)))));
+	});
+var $author$project$Main$closeModal = function (model) {
+	return _Utils_update(
+		model,
+		{modalVisibility: $rundis$elm_bootstrap$Bootstrap$Modal$hidden});
+};
+var $elm$file$File$Select$file = F2(
+	function (mimes, toMsg) {
+		return A2(
+			$elm$core$Task$perform,
+			toMsg,
+			_File_uploadOne(mimes));
+	});
+var $elm$random$Random$Generator = function (a) {
+	return {$: 'Generator', a: a};
+};
+var $elm$core$Basics$abs = function (n) {
+	return (n < 0) ? (-n) : n;
+};
+var $elm$random$Random$Seed = F2(
+	function (a, b) {
+		return {$: 'Seed', a: a, b: b};
+	});
+var $elm$random$Random$next = function (_v0) {
+	var state0 = _v0.a;
+	var incr = _v0.b;
+	return A2($elm$random$Random$Seed, ((state0 * 1664525) + incr) >>> 0, incr);
+};
+var $elm$core$Bitwise$xor = _Bitwise_xor;
+var $elm$random$Random$peel = function (_v0) {
+	var state = _v0.a;
+	var word = (state ^ (state >>> ((state >>> 28) + 4))) * 277803737;
+	return ((word >>> 22) ^ word) >>> 0;
+};
+var $elm$random$Random$float = F2(
+	function (a, b) {
+		return $elm$random$Random$Generator(
+			function (seed0) {
+				var seed1 = $elm$random$Random$next(seed0);
+				var range = $elm$core$Basics$abs(b - a);
+				var n1 = $elm$random$Random$peel(seed1);
+				var n0 = $elm$random$Random$peel(seed0);
+				var lo = (134217727 & n1) * 1.0;
+				var hi = (67108863 & n0) * 1.0;
+				var val = ((hi * 134217728.0) + lo) / 9007199254740992.0;
+				var scaled = (val * range) + a;
+				return _Utils_Tuple2(
+					scaled,
+					$elm$random$Random$next(seed1));
+			});
+	});
+var $elm$random$Random$Generate = function (a) {
+	return {$: 'Generate', a: a};
+};
+var $elm$random$Random$initialSeed = function (x) {
+	var _v0 = $elm$random$Random$next(
+		A2($elm$random$Random$Seed, 0, 1013904223));
+	var state1 = _v0.a;
+	var incr = _v0.b;
+	var state2 = (state1 + x) >>> 0;
+	return $elm$random$Random$next(
+		A2($elm$random$Random$Seed, state2, incr));
+};
+var $elm$time$Time$Name = function (a) {
+	return {$: 'Name', a: a};
+};
+var $elm$time$Time$Offset = function (a) {
+	return {$: 'Offset', a: a};
+};
+var $elm$time$Time$Zone = F2(
+	function (a, b) {
+		return {$: 'Zone', a: a, b: b};
+	});
+var $elm$time$Time$customZone = $elm$time$Time$Zone;
+var $elm$time$Time$now = _Time_now($elm$time$Time$millisToPosix);
+var $elm$time$Time$posixToMillis = function (_v0) {
+	var millis = _v0.a;
+	return millis;
+};
+var $elm$random$Random$init = A2(
+	$elm$core$Task$andThen,
+	function (time) {
+		return $elm$core$Task$succeed(
+			$elm$random$Random$initialSeed(
+				$elm$time$Time$posixToMillis(time)));
+	},
+	$elm$time$Time$now);
+var $elm$random$Random$step = F2(
+	function (_v0, seed) {
+		var generator = _v0.a;
+		return generator(seed);
+	});
+var $elm$random$Random$onEffects = F3(
+	function (router, commands, seed) {
+		if (!commands.b) {
+			return $elm$core$Task$succeed(seed);
+		} else {
+			var generator = commands.a.a;
+			var rest = commands.b;
+			var _v1 = A2($elm$random$Random$step, generator, seed);
+			var value = _v1.a;
+			var newSeed = _v1.b;
+			return A2(
+				$elm$core$Task$andThen,
+				function (_v2) {
+					return A3($elm$random$Random$onEffects, router, rest, newSeed);
+				},
+				A2($elm$core$Platform$sendToApp, router, value));
+		}
+	});
+var $elm$random$Random$onSelfMsg = F3(
+	function (_v0, _v1, seed) {
+		return $elm$core$Task$succeed(seed);
+	});
+var $elm$random$Random$map = F2(
+	function (func, _v0) {
+		var genA = _v0.a;
+		return $elm$random$Random$Generator(
+			function (seed0) {
+				var _v1 = genA(seed0);
+				var a = _v1.a;
+				var seed1 = _v1.b;
+				return _Utils_Tuple2(
+					func(a),
+					seed1);
+			});
+	});
+var $elm$random$Random$cmdMap = F2(
+	function (func, _v0) {
+		var generator = _v0.a;
+		return $elm$random$Random$Generate(
+			A2($elm$random$Random$map, func, generator));
+	});
+_Platform_effectManagers['Random'] = _Platform_createManager($elm$random$Random$init, $elm$random$Random$onEffects, $elm$random$Random$onSelfMsg, $elm$random$Random$cmdMap);
+var $elm$random$Random$command = _Platform_leaf('Random');
+var $elm$random$Random$generate = F2(
+	function (tagger, generator) {
+		return $elm$random$Random$command(
+			$elm$random$Random$Generate(
+				A2($elm$random$Random$map, tagger, generator)));
+	});
+var $elm$random$Random$listHelp = F4(
+	function (revList, n, gen, seed) {
+		listHelp:
+		while (true) {
+			if (n < 1) {
+				return _Utils_Tuple2(revList, seed);
+			} else {
+				var _v0 = gen(seed);
+				var value = _v0.a;
+				var newSeed = _v0.b;
+				var $temp$revList = A2($elm$core$List$cons, value, revList),
+					$temp$n = n - 1,
+					$temp$gen = gen,
+					$temp$seed = newSeed;
+				revList = $temp$revList;
+				n = $temp$n;
+				gen = $temp$gen;
+				seed = $temp$seed;
+				continue listHelp;
+			}
+		}
+	});
+var $elm$random$Random$list = F2(
+	function (n, _v0) {
+		var gen = _v0.a;
+		return $elm$random$Random$Generator(
+			function (seed) {
+				return A4($elm$random$Random$listHelp, _List_Nil, n, gen, seed);
+			});
+	});
+var $elm$core$List$filter = F2(
+	function (isGood, list) {
+		return A3(
+			$elm$core$List$foldr,
+			F2(
+				function (x, xs) {
+					return isGood(x) ? A2($elm$core$List$cons, x, xs) : xs;
+				}),
+			_List_Nil,
+			list);
+	});
+var $author$project$ReadCSV$clearBlankRows = $elm$core$List$filter(
+	function (s) {
+		return $elm$core$String$length(s) > 0;
+	});
+var $author$project$ReadCSV$colIdx = function (rawheader) {
+	return function (h) {
+		return A2(
+			$elm$core$Tuple$mapSecond,
+			$elm$core$List$range(0),
+			A2(
+				$elm$core$Tuple$mapSecond,
+				function (n) {
+					return n - 1;
+				},
+				A2(
+					$elm$core$Tuple$mapSecond,
+					$elm$core$List$length,
+					_Utils_Tuple2(h, h))));
+	}(
+		A2($elm$core$String$split, ',', rawheader));
+};
+var $elm$core$List$drop = F2(
+	function (n, list) {
+		drop:
+		while (true) {
+			if (n <= 0) {
+				return list;
+			} else {
+				if (!list.b) {
+					return list;
+				} else {
+					var x = list.a;
+					var xs = list.b;
+					var $temp$n = n - 1,
+						$temp$list = xs;
+					n = $temp$n;
+					list = $temp$list;
+					continue drop;
+				}
+			}
+		}
+	});
+var $elm_community$list_extra$List$Extra$getAt = F2(
+	function (idx, xs) {
+		return (idx < 0) ? $elm$core$Maybe$Nothing : $elm$core$List$head(
+			A2($elm$core$List$drop, idx, xs));
+	});
+var $author$project$ReadCSV$getCol = F2(
+	function (rows, i) {
+		return A2(
+			$elm$core$List$map,
+			A2(
+				$elm$core$Basics$composeR,
+				$elm_community$list_extra$List$Extra$getAt(i),
+				$elm$core$Maybe$withDefault('')),
+			rows);
+	});
+var $author$project$ReadCSV$getCols = function (pair) {
+	var _v0 = pair;
+	var _v1 = _v0.a;
+	var header = _v1.a;
+	var idx = _v1.b;
+	var rows = _v0.b;
+	var cols = A2(
+		$elm$core$List$map,
+		$author$project$ReadCSV$getCol(rows),
+		idx);
+	return A2($elm_community$list_extra$List$Extra$zip, header, cols);
+};
+var $elm_community$list_extra$List$Extra$uncons = function (list) {
+	if (!list.b) {
+		return $elm$core$Maybe$Nothing;
+	} else {
+		var first = list.a;
+		var rest = list.b;
+		return $elm$core$Maybe$Just(
+			_Utils_Tuple2(first, rest));
+	}
+};
+var $author$project$ReadCSV$getHeadTail = function (rawfile) {
+	var lines = A2(
+		$elm$core$String$split,
+		'\n',
+		$elm$core$String$trim(rawfile));
+	return $elm_community$list_extra$List$Extra$uncons(lines);
+};
+var $author$project$ReadCSV$splitBody = function (body) {
+	return A2(
+		$elm$core$List$map,
+		$elm$core$String$split(','),
+		body);
+};
+var $author$project$ReadCSV$getVariables = function (rawfile) {
+	return A2(
+		$elm$core$Maybe$map,
+		$author$project$ReadCSV$getCols,
+		A2(
+			$elm$core$Maybe$map,
+			A2($elm$core$Tuple$mapBoth, $author$project$ReadCSV$colIdx, $author$project$ReadCSV$splitBody),
+			A2(
+				$elm$core$Maybe$map,
+				$elm$core$Tuple$mapSecond($author$project$ReadCSV$clearBlankRows),
+				$author$project$ReadCSV$getHeadTail(rawfile))));
+};
+var $author$project$Main$loadCsv = F2(
+	function (content, model) {
+		return _Utils_update(
+			model,
+			{
+				csv: $elm$core$Maybe$Just(content),
+				variables: $author$project$ReadCSV$getVariables(content)
+			});
+	});
+var $author$project$Main$loadData = F2(
+	function (data, model) {
+		return _Utils_update(
+			model,
+			{
+				datasets: A2($elm$core$List$cons, data, model.datasets),
+				modalVisibility: $rundis$elm_bootstrap$Bootstrap$Modal$hidden,
+				originalSample: $elm$core$Maybe$Nothing,
+				selected: $elm$core$Maybe$Just(data)
+			});
+	});
+var $pd_andy$tuple_extra$Tuple$Extra$pairWith = F2(
+	function (b, a) {
+		return A2($elm$core$Tuple$pair, a, b);
+	});
+var $author$project$Main$resetFile = function (model) {
+	return _Utils_update(
+		model,
+		{counts: $elm$core$Maybe$Nothing, fileName: 'None', fileType: $author$project$ReadCSV$NoType, selectedData: $elm$core$Maybe$Nothing, selectedVariable: $elm$core$Maybe$Nothing, variables: $elm$core$Maybe$Nothing});
+};
+var $author$project$Main$resetTrials = function (model) {
+	return _Utils_update(
+		model,
+		{level: $elm$core$Maybe$Nothing, tailLimit: $author$project$Limits$NoBounds, trials: 0, ys: $elm$core$Dict$empty});
+};
+var $author$project$ReadCSV$findVariable = F2(
+	function (lbl, vars) {
+		return A2(
+			$elm$core$Maybe$map,
+			$elm$core$Tuple$second,
+			A2(
+				$elm_community$list_extra$List$Extra$find,
+				function (p) {
+					return _Utils_eq(p.a, lbl);
+				},
+				vars));
+	});
+var $author$project$Main$selectCounts = F2(
+	function (lbl, model) {
+		var counts = A2(
+			$elm$core$Maybe$map,
+			$elm$core$List$map(
+				A2(
+					$elm$core$Basics$composeR,
+					$elm$core$String$toInt,
+					$elm$core$Maybe$withDefault(0))),
+			A2(
+				$elm$core$Maybe$withDefault,
+				$elm$core$Maybe$Nothing,
+				A2(
+					$elm$core$Maybe$map,
+					$author$project$ReadCSV$findVariable(lbl),
+					model.variables)));
+		return _Utils_update(
+			model,
+			{counts: counts});
+	});
+var $author$project$Main$selectVariable = F2(
+	function (lbl, model) {
+		var _v0 = function () {
+			var _v1 = model.variables;
+			if (_v1.$ === 'Nothing') {
+				return _Utils_Tuple2($elm$core$Maybe$Nothing, $elm$core$Maybe$Nothing);
+			} else {
+				var vars = _v1.a;
+				return A2(
+					$elm$core$Tuple$mapSecond,
+					$elm$core$Maybe$map($elm$core$Tuple$second),
+					A2(
+						$elm$core$Tuple$mapSecond,
+						$elm_community$list_extra$List$Extra$find(
+							function (p) {
+								return _Utils_eq(p.a, lbl);
+							}),
+						_Utils_Tuple2(
+							$elm$core$Maybe$Just(lbl),
+							vars)));
+			}
+		}();
+		var _var = _v0.a;
+		var col = _v0.b;
+		return _Utils_update(
+			model,
+			{selectedData: col, selectedVariable: _var});
+	});
+var $rundis$elm_bootstrap$Bootstrap$Modal$Show = {$: 'Show'};
+var $rundis$elm_bootstrap$Bootstrap$Modal$shown = $rundis$elm_bootstrap$Bootstrap$Modal$Show;
+var $author$project$Main$showModal = function (model) {
+	return _Utils_update(
+		model,
+		{modalVisibility: $rundis$elm_bootstrap$Bootstrap$Modal$shown});
+};
+var $elm$file$File$toString = _File_toString;
+var $author$project$Main$updateDataDropState = F2(
+	function (state, model) {
+		return _Utils_update(
+			model,
+			{dataDropState: state});
+	});
+var $elm$file$File$name = _File_name;
+var $author$project$Main$updateFileName = F2(
+	function (file, model) {
+		return _Utils_update(
+			model,
+			{
+				fileName: $elm$file$File$name(file)
+			});
+	});
+var $author$project$Utility$apply = F2(
+	function (f, x) {
+		return f(x);
+	});
+var $author$project$Sample$updateSample = F2(
 	function (x, sample) {
 		return _Utils_update(
 			sample,
-			{numFailures: sample.n - x, numSuccess: x});
+			{
+				numFailures: sample.n - x,
+				numSuccess: x,
+				p: A2($author$project$Sample$divide, x, sample.n)
+			});
 	});
 var $author$project$Main$updateLast = F2(
 	function (ws, model) {
 		var lastX = A3(
 			$elm$core$Maybe$map2,
-			$author$project$Main$apply,
+			$author$project$Utility$apply,
 			model.binomGen,
 			$elm_community$list_extra$List$Extra$last(ws));
-		var newBootstrap = A3($elm$core$Maybe$map2, $author$project$DataSet$updateSample, lastX, model.bootstrapSample);
+		var newBootstrap = A3($elm$core$Maybe$map2, $author$project$Sample$updateSample, lastX, model.bootstrapSample);
 		return _Utils_update(
 			model,
 			{bootstrapSample: newBootstrap});
-	});
-var $author$project$Main$updateOriginal = F2(
-	function (newSample, model) {
-		return _Utils_update(
-			model,
-			{originalSample: newSample});
 	});
 var $author$project$DataSet$createDataFromFreq = F3(
 	function (name, lbls, cnts) {
@@ -13169,166 +13587,12 @@ var $author$project$Main$updatePerspective = function (model) {
 			perspectiveData: $author$project$Main$createDataFromUser(model)
 		});
 };
-var $author$project$Limits$Lower = function (a) {
-	return {$: 'Lower', a: a};
-};
-var $elm_community$list_extra$List$Extra$takeWhile = function (predicate) {
-	var takeWhileMemo = F2(
-		function (memo, list) {
-			takeWhileMemo:
-			while (true) {
-				if (!list.b) {
-					return $elm$core$List$reverse(memo);
-				} else {
-					var x = list.a;
-					var xs = list.b;
-					if (predicate(x)) {
-						var $temp$memo = A2($elm$core$List$cons, x, memo),
-							$temp$list = xs;
-						memo = $temp$memo;
-						list = $temp$list;
-						continue takeWhileMemo;
-					} else {
-						return $elm$core$List$reverse(memo);
-					}
-				}
-			}
-		});
-	return takeWhileMemo(_List_Nil);
-};
-var $author$project$Main$leftTailBound = F2(
-	function (tailArea, percentiles) {
-		return A2(
-			$elm$core$Maybe$map,
-			$elm$core$Tuple$first,
-			$elm_community$list_extra$List$Extra$last(
-				A2(
-					$elm_community$list_extra$List$Extra$takeWhile,
-					A2(
-						$elm$core$Basics$composeR,
-						$elm$core$Tuple$second,
-						$elm$core$Basics$gt(tailArea)),
-					percentiles)));
+var $author$project$Main$updateSuccessDropState = F2(
+	function (state, model) {
+		return _Utils_update(
+			model,
+			{successDropState: state});
 	});
-var $author$project$Main$divideBy = F2(
-	function (denom, numer) {
-		return numer / denom;
-	});
-var $author$project$Main$getPercentiles = F3(
-	function (n, trials, counts) {
-		return function (el) {
-			return A2(
-				$elm_community$list_extra$List$Extra$zip,
-				A2($elm$core$List$map, $elm$core$Tuple$first, el),
-				A3(
-					$elm_community$list_extra$List$Extra$scanl,
-					$elm$core$Basics$add,
-					0,
-					A2($elm$core$List$map, $elm$core$Tuple$second, el)));
-		}(
-			A2(
-				$elm$core$List$map,
-				A2(
-					$elm$core$Tuple$mapBoth,
-					$author$project$Main$divideBy(n),
-					$author$project$Main$divideBy(trials)),
-				$elm$core$Dict$toList(counts)));
-	});
-var $author$project$Main$oneTailBound = F5(
-	function (boundFunc, tailFunc, model, level, sample) {
-		var tailArea = 1 - level;
-		return A2(
-			$elm$core$Maybe$withDefault,
-			$author$project$Limits$NoBounds,
-			A2(
-				$elm$core$Maybe$map,
-				tailFunc,
-				A2(
-					boundFunc,
-					tailArea,
-					A3($author$project$Main$getPercentiles, sample.n, model.trials, model.ys))));
-	});
-var $author$project$Main$getLeftTailBound = A2($author$project$Main$oneTailBound, $author$project$Main$leftTailBound, $author$project$Limits$Lower);
-var $author$project$Limits$Upper = function (a) {
-	return {$: 'Upper', a: a};
-};
-var $elm_community$list_extra$List$Extra$dropWhileRight = function (p) {
-	return A2(
-		$elm$core$List$foldr,
-		F2(
-			function (x, xs) {
-				return (p(x) && $elm$core$List$isEmpty(xs)) ? _List_Nil : A2($elm$core$List$cons, x, xs);
-			}),
-		_List_Nil);
-};
-var $author$project$Main$rightTailBound = F2(
-	function (tailArea, percentiles) {
-		var oneMinus = 1 - tailArea;
-		return A2(
-			$elm$core$Maybe$map,
-			$elm$core$Tuple$first,
-			$elm_community$list_extra$List$Extra$last(
-				A2(
-					$elm_community$list_extra$List$Extra$dropWhileRight,
-					A2(
-						$elm$core$Basics$composeR,
-						$elm$core$Tuple$second,
-						$elm$core$Basics$lt(oneMinus)),
-					percentiles)));
-	});
-var $author$project$Main$getRightTailBound = A2($author$project$Main$oneTailBound, $author$project$Main$rightTailBound, $author$project$Limits$Upper);
-var $author$project$Limits$TwoTail = F2(
-	function (a, b) {
-		return {$: 'TwoTail', a: a, b: b};
-	});
-var $author$project$Main$getTwoTailBound = F3(
-	function (model, level, sample) {
-		var tailArea = (1 - level) / 2;
-		var percentiles = A3($author$project$Main$getPercentiles, sample.n, model.trials, model.ys);
-		var right = A2($author$project$Main$rightTailBound, tailArea, percentiles);
-		var left = A2($author$project$Main$leftTailBound, tailArea, percentiles);
-		return A2(
-			$elm$core$Maybe$withDefault,
-			$author$project$Limits$NoBounds,
-			A3($elm$core$Maybe$map2, $author$project$Limits$TwoTail, left, right));
-	});
-var $author$project$Main$getBound = function (model) {
-	var _v0 = _Utils_Tuple3(model.originalSample, model.tail, model.level);
-	_v0$3:
-	while (true) {
-		if ((_v0.a.$ === 'Just') && (_v0.c.$ === 'Just')) {
-			switch (_v0.b.$) {
-				case 'Left':
-					var sample = _v0.a.a;
-					var _v1 = _v0.b;
-					var level = _v0.c.a;
-					return A3($author$project$Main$getLeftTailBound, model, level, sample);
-				case 'Right':
-					var sample = _v0.a.a;
-					var _v2 = _v0.b;
-					var level = _v0.c.a;
-					return A3($author$project$Main$getRightTailBound, model, level, sample);
-				case 'Two':
-					var sample = _v0.a.a;
-					var _v3 = _v0.b;
-					var level = _v0.c.a;
-					return A3($author$project$Main$getTwoTailBound, model, level, sample);
-				default:
-					break _v0$3;
-			}
-		} else {
-			break _v0$3;
-		}
-	}
-	return $author$project$Limits$NoBounds;
-};
-var $author$project$Main$updateTailBounds = function (model) {
-	return _Utils_update(
-		model,
-		{
-			tailLimit: $author$project$Main$getBound(model)
-		});
-};
 var $elm$core$Dict$get = F2(
 	function (targetKey, dict) {
 		get:
@@ -13753,316 +14017,311 @@ var $author$project$CountDict$updateCountDict = F3(
 			cnts,
 			A2($elm$core$List$map, binomGen, outcomes));
 	});
-var $author$project$Main$updateYs = F2(
-	function (ws, model) {
-		var _v0 = function () {
-			var _v1 = model.binomGen;
-			if (_v1.$ === 'Nothing') {
-				return _Utils_Tuple2(model.ys, model.trials);
-			} else {
-				var binomGen = _v1.a;
-				return _Utils_Tuple2(
-					A3($author$project$CountDict$updateCountDict, binomGen, model.ys, ws),
-					model.trials + $elm$core$List$length(ws));
-			}
-		}();
-		var newYs = _v0.a;
-		var newTrials = _v0.b;
+var $author$project$Main$applyBinomGen = F3(
+	function (ws, model, gen) {
 		return _Utils_update(
 			model,
-			{trials: newTrials, ys: newYs});
+			{
+				trials: model.trials + $elm$core$List$length(ws),
+				ys: A3($author$project$CountDict$updateCountDict, gen, model.ys, ws)
+			});
+	});
+var $author$project$Main$updateYs = F2(
+	function (ws, model) {
+		return A3(
+			$elm_community$maybe_extra$Maybe$Extra$unwrap,
+			model,
+			A2($author$project$Main$applyBinomGen, ws, model),
+			model.binomGen);
 	});
 var $author$project$Main$update = F2(
 	function (msg, model) {
 		switch (msg.$) {
 			case 'CsvRequested':
-				return _Utils_Tuple2(
-					_Utils_update(
-						model,
-						{counts: $elm$core$Maybe$Nothing, fileName: 'None', fileType: $author$project$Main$NoType, selectedData: $elm$core$Maybe$Nothing, selectedVariable: $elm$core$Maybe$Nothing, variables: $elm$core$Maybe$Nothing}),
+				return A2(
+					$pd_andy$tuple_extra$Tuple$Extra$pairWith,
 					A2(
 						$elm$file$File$Select$file,
 						_List_fromArray(
 							['text/csv']),
-						$author$project$Main$CsvSelected));
+						$author$project$Main$CsvSelected),
+					$author$project$Main$resetFile(model));
 			case 'CsvSelected':
 				var file = msg.a;
-				return _Utils_Tuple2(
-					_Utils_update(
-						model,
-						{
-							fileName: $elm$file$File$name(file)
-						}),
+				return A2(
+					$pd_andy$tuple_extra$Tuple$Extra$pairWith,
 					A2(
 						$elm$core$Task$perform,
 						$author$project$Main$CsvLoaded,
-						$elm$file$File$toString(file)));
+						$elm$file$File$toString(file)),
+					A2($author$project$Main$updateFileName, file, model));
 			case 'CsvLoaded':
 				var content = msg.a;
-				return _Utils_Tuple2(
-					_Utils_update(
-						model,
-						{
-							csv: $elm$core$Maybe$Just(content),
-							variables: $author$project$ReadCSV$getVariables(content)
-						}),
-					$elm$core$Platform$Cmd$none);
+				return $author$project$Main$andRedrawPlots(
+					$author$project$Main$resetBootstrap(
+						$author$project$Main$resetTrials(
+							A2($author$project$Main$loadCsv, content, model))));
 			case 'DataDropMsg':
 				var state = msg.a;
-				return _Utils_Tuple2(
-					_Utils_update(
-						model,
-						{dataDropState: state}),
-					$elm$core$Platform$Cmd$none);
+				return A2(
+					$pd_andy$tuple_extra$Tuple$Extra$pairWith,
+					$elm$core$Platform$Cmd$none,
+					A2($author$project$Main$updateDataDropState, state, model));
 			case 'SuccessDropMsg':
 				var state = msg.a;
-				return _Utils_Tuple2(
-					_Utils_update(
-						model,
-						{successDropState: state}),
-					$elm$core$Platform$Cmd$none);
+				return A2(
+					$pd_andy$tuple_extra$Tuple$Extra$pairWith,
+					$elm$core$Platform$Cmd$none,
+					A2($author$project$Main$updateSuccessDropState, state, model));
 			case 'ChangeData':
 				var name = msg.a;
-				var data = A2($author$project$DataSet$getNewData, name, model.datasets);
-				var finalModel = $author$project$Main$resetTrials(
-					_Utils_update(
-						model,
-						{originalSample: $elm$core$Maybe$Nothing, selected: data}));
-				return _Utils_Tuple2(
-					finalModel,
-					$elm$core$Platform$Cmd$batch(
-						_List_fromArray(
-							[
-								$author$project$Main$originalPlotCmd(finalModel),
-								$author$project$Main$bootstrapPlotCmd(finalModel),
-								$author$project$Main$distPlotCmd(finalModel)
-							])));
+				return $author$project$Main$andRedrawPlots(
+					$author$project$Main$resetTrials(
+						A2($author$project$Main$changeData, name, model)));
 			case 'ChangeSuccess':
 				var name = msg.a;
-				var newSample = A2(
-					$elm$core$Maybe$andThen,
-					$author$project$DataSet$getSuccess(name),
-					model.selected);
-				var finalModel = $author$project$Main$updateTailBounds(
-					$author$project$Main$updateDistPlotConfig(
-						A2(
-							$author$project$Main$updateBinom,
-							newSample,
-							A2(
-								$author$project$Main$resetBootstrap,
-								newSample,
-								A2($author$project$Main$updateOriginal, newSample, model)))));
-				return _Utils_Tuple2(
-					finalModel,
-					$elm$core$Platform$Cmd$batch(
-						_List_fromArray(
-							[
-								$author$project$Main$originalPlotCmd(finalModel),
-								$author$project$Main$bootstrapPlotCmd(finalModel),
-								$author$project$Main$distPlotCmd(finalModel)
-							])));
+				return $author$project$Main$andRedrawPlots(
+					A2($author$project$Main$changeSuccess, name, model));
 			case 'CloseModal':
-				var finalModel = _Utils_update(
-					model,
-					{modalVisibility: $rundis$elm_bootstrap$Bootstrap$Modal$hidden});
-				return _Utils_Tuple2(
-					finalModel,
-					$elm$core$Platform$Cmd$batch(
-						_List_fromArray(
-							[
-								$author$project$Main$originalPlotCmd(finalModel),
-								$author$project$Main$bootstrapPlotCmd(finalModel),
-								$author$project$Main$distPlotCmd(finalModel)
-							])));
+				return $author$project$Main$andRedrawPlots(
+					$author$project$Main$closeModal(model));
 			case 'ShowModal':
-				return _Utils_Tuple2(
-					_Utils_update(
-						model,
-						{modalVisibility: $rundis$elm_bootstrap$Bootstrap$Modal$shown}),
-					$elm$core$Platform$Cmd$none);
+				return A2(
+					$pd_andy$tuple_extra$Tuple$Extra$pairWith,
+					$elm$core$Platform$Cmd$none,
+					$author$project$Main$showModal(model));
 			case 'ChangeFileType':
 				var s = msg.a;
-				var ftype = function () {
-					switch (s) {
-						case 'reg':
-							return $author$project$Main$Regular;
-						case 'freq':
-							return $author$project$Main$Frequency;
-						default:
-							return $author$project$Main$NoType;
-					}
-				}();
-				return _Utils_Tuple2(
+				return A2(
+					$pd_andy$tuple_extra$Tuple$Extra$pairWith,
+					$elm$core$Platform$Cmd$none,
 					$author$project$Main$resetTrials(
-						_Utils_update(
-							model,
-							{fileType: ftype})),
-					$elm$core$Platform$Cmd$none);
+						A2($author$project$Main$changeFileType, s, model)));
 			case 'SelectVariable':
 				var lbl = msg.a;
-				var _v2 = function () {
-					var _v3 = model.variables;
-					if (_v3.$ === 'Nothing') {
-						return _Utils_Tuple2($elm$core$Maybe$Nothing, $elm$core$Maybe$Nothing);
-					} else {
-						var vars = _v3.a;
-						return A2(
-							$elm$core$Tuple$mapSecond,
-							$elm$core$Maybe$map($elm$core$Tuple$second),
-							A2(
-								$elm$core$Tuple$mapSecond,
-								$elm_community$list_extra$List$Extra$find(
-									function (p) {
-										return _Utils_eq(p.a, lbl);
-									}),
-								_Utils_Tuple2(
-									$elm$core$Maybe$Just(lbl),
-									vars)));
-					}
-				}();
-				var _var = _v2.a;
-				var col = _v2.b;
-				return _Utils_Tuple2(
-					$author$project$Main$updatePerspective(
-						_Utils_update(
-							model,
-							{selectedData: col, selectedVariable: _var})),
-					$elm$core$Platform$Cmd$none);
+				return A2(
+					$pd_andy$tuple_extra$Tuple$Extra$pairWith,
+					$elm$core$Platform$Cmd$none,
+					$author$project$Main$resetTrials(
+						$author$project$Main$updatePerspective(
+							A2($author$project$Main$selectVariable, lbl, model))));
 			case 'SelectCount':
 				var lbl = msg.a;
-				var rawcol = function () {
-					var _v4 = model.variables;
-					if (_v4.$ === 'Nothing') {
-						return $elm$core$Maybe$Nothing;
-					} else {
-						var vars = _v4.a;
-						return A2(
-							$elm$core$Maybe$map,
-							$elm$core$Tuple$second,
-							A2(
-								$elm_community$list_extra$List$Extra$find,
-								function (p) {
-									return _Utils_eq(p.a, lbl);
-								},
-								vars));
-					}
-				}();
-				var counts = A2(
-					$elm$core$Maybe$map,
-					$elm$core$List$map(
-						A2(
-							$elm$core$Basics$composeR,
-							$elm$core$String$toInt,
-							$elm$core$Maybe$withDefault(0))),
-					rawcol);
-				return _Utils_Tuple2(
-					$author$project$Main$updatePerspective(
-						_Utils_update(
-							model,
-							{counts: counts})),
-					$elm$core$Platform$Cmd$none);
+				return A2(
+					$pd_andy$tuple_extra$Tuple$Extra$pairWith,
+					$elm$core$Platform$Cmd$none,
+					$author$project$Main$resetTrials(
+						$author$project$Main$updatePerspective(
+							A2($author$project$Main$selectCounts, lbl, model))));
 			case 'LoadUserData':
-				var _v5 = model.perspectiveData;
-				if (_v5.$ === 'Nothing') {
-					return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+				var _v1 = model.perspectiveData;
+				if (_v1.$ === 'Nothing') {
+					return $author$project$Main$andRedrawPlots(
+						$author$project$Main$resetBootstrap(
+							$author$project$Main$resetTrials(model)));
 				} else {
-					var data = _v5.a;
-					var finalModel = $author$project$Main$resetTrials(
-						_Utils_update(
-							model,
-							{
-								datasets: A2($elm$core$List$cons, data, model.datasets),
-								modalVisibility: $rundis$elm_bootstrap$Bootstrap$Modal$hidden,
-								originalSample: $elm$core$Maybe$Nothing,
-								selected: $elm$core$Maybe$Just(data)
-							}));
-					return _Utils_Tuple2(
-						finalModel,
-						$elm$core$Platform$Cmd$batch(
-							_List_fromArray(
-								[
-									$author$project$Main$originalPlotCmd(finalModel),
-									$author$project$Main$bootstrapPlotCmd(finalModel),
-									$author$project$Main$distPlotCmd(finalModel)
-								])));
+					var data = _v1.a;
+					return $author$project$Main$andRedrawPlots(
+						$author$project$Main$resetBootstrap(
+							$author$project$Main$resetTrials(
+								A2($author$project$Main$loadData, data, model))));
 				}
 			case 'Collect':
 				var n = msg.a;
-				return _Utils_Tuple2(
-					model,
+				return A2(
+					$pd_andy$tuple_extra$Tuple$Extra$pairWith,
 					A2(
 						$elm$random$Random$generate,
 						$author$project$Main$NewStatistics,
 						A2(
 							$elm$random$Random$list,
 							n,
-							A2($elm$random$Random$float, 0, 1))));
+							A2($elm$random$Random$float, 0, 1))),
+					model);
 			case 'Reset':
-				var finalModel = $author$project$Main$updateDistPlotConfig(
-					$author$project$Main$resetTrials(
-						A2($author$project$Main$resetBootstrap, model.originalSample, model)));
-				return _Utils_Tuple2(
-					finalModel,
-					$elm$core$Platform$Cmd$batch(
-						_List_fromArray(
-							[
-								$author$project$Main$originalPlotCmd(finalModel),
-								$author$project$Main$bootstrapPlotCmd(finalModel),
-								$author$project$Main$distPlotCmd(finalModel)
-							])));
+				return $author$project$Main$andRedrawPlots(
+					$author$project$Main$updateDistPlotConfig(
+						$author$project$Main$resetTrials(
+							$author$project$Main$resetBootstrap(model))));
 			case 'NewStatistics':
 				var ws = msg.a;
-				var finalModel = $author$project$Main$updateTailBounds(
-					$author$project$Main$updateDistPlotConfig(
-						A2(
-							$author$project$Main$updateLast,
-							ws,
-							A2($author$project$Main$updateYs, ws, model))));
-				return _Utils_Tuple2(
-					finalModel,
-					$elm$core$Platform$Cmd$batch(
-						_List_fromArray(
-							[
-								$author$project$Main$originalPlotCmd(finalModel),
-								$author$project$Main$bootstrapPlotCmd(finalModel),
-								$author$project$Main$distPlotCmd(finalModel)
-							])));
-			case 'ChangeTail':
-				var tail = msg.a;
-				var finalModel = $author$project$Main$updateDistPlotConfig(
+				return $author$project$Main$andRedrawPlots(
 					$author$project$Main$updateTailBounds(
-						_Utils_update(
-							model,
-							{tail: tail})));
-				return _Utils_Tuple2(
-					finalModel,
-					$elm$core$Platform$Cmd$batch(
-						_List_fromArray(
-							[
-								$author$project$Main$originalPlotCmd(finalModel),
-								$author$project$Main$bootstrapPlotCmd(finalModel),
-								$author$project$Main$distPlotCmd(finalModel)
-							])));
+						$author$project$Main$updateDistPlotConfig(
+							A2(
+								$author$project$Main$updateLast,
+								ws,
+								A2($author$project$Main$updateYs, ws, model)))));
 			default:
 				var level = msg.a;
-				var finalModel = $author$project$Main$updateDistPlotConfig(
-					$author$project$Main$updateTailBounds(
-						_Utils_update(
-							model,
-							{
-								level: $elm$core$Maybe$Just(level)
-							})));
-				return _Utils_Tuple2(
-					finalModel,
-					$elm$core$Platform$Cmd$batch(
-						_List_fromArray(
-							[
-								$author$project$Main$originalPlotCmd(finalModel),
-								$author$project$Main$bootstrapPlotCmd(finalModel),
-								$author$project$Main$distPlotCmd(finalModel)
-							])));
+				return $author$project$Main$andRedrawPlots(
+					$author$project$Main$updateDistPlotConfig(
+						$author$project$Main$updateTailBounds(
+							A2($author$project$Main$changeLevel, level, model))));
 		}
 	});
+var $elm$html$Html$div = _VirtualDom_node('div');
+var $elm$html$Html$br = _VirtualDom_node('br');
+var $lukewestby$elm_template$Template$renderComponent = F3(
+	function (record, component, result) {
+		if (component.$ === 'Literal') {
+			var string = component.a;
+			return _Utils_ap(result, string);
+		} else {
+			var accessor = component.a;
+			return _Utils_ap(
+				result,
+				accessor(record));
+		}
+	});
+var $lukewestby$elm_template$Template$render = F2(
+	function (record, currentTemplate) {
+		return A3(
+			$elm$core$List$foldr,
+			$lukewestby$elm_template$Template$renderComponent(record),
+			'',
+			currentTemplate);
+	});
+var $lukewestby$elm_template$Template$Literal = function (a) {
+	return {$: 'Literal', a: a};
+};
+var $lukewestby$elm_template$Template$template = function (initial) {
+	return _List_fromArray(
+		[
+			$lukewestby$elm_template$Template$Literal(initial)
+		]);
+};
+var $lukewestby$elm_template$Template$withString = F2(
+	function (string, currentTemplate) {
+		return A2(
+			$elm$core$List$cons,
+			$lukewestby$elm_template$Template$Literal(string),
+			currentTemplate);
+	});
+var $lukewestby$elm_template$Template$Interpolation = function (a) {
+	return {$: 'Interpolation', a: a};
+};
+var $lukewestby$elm_template$Template$withValue = F2(
+	function (interpolator, currentTemplate) {
+		return A2(
+			$elm$core$List$cons,
+			$lukewestby$elm_template$Template$Interpolation(interpolator),
+			currentTemplate);
+	});
+var $author$project$Sample$countStr = function (sample) {
+	return A2(
+		$lukewestby$elm_template$Template$render,
+		sample,
+		A2(
+			$lukewestby$elm_template$Template$withValue,
+			A2(
+				$elm$core$Basics$composeR,
+				function ($) {
+					return $.numSuccess;
+				},
+				$elm$core$String$fromInt),
+			A2(
+				$lukewestby$elm_template$Template$withString,
+				') = ',
+				A2(
+					$lukewestby$elm_template$Template$withValue,
+					function ($) {
+						return $.successLbl;
+					},
+					$lukewestby$elm_template$Template$template('Count(')))));
+};
+var $elm_community$maybe_extra$Maybe$Extra$isNothing = function (m) {
+	if (m.$ === 'Nothing') {
+		return true;
+	} else {
+		return false;
+	}
+};
+var $author$project$Sample$isEmpty = A2(
+	$elm$core$Basics$composeR,
+	function ($) {
+		return $.p;
+	},
+	$elm_community$maybe_extra$Maybe$Extra$isNothing);
+var $author$project$Sample$nStr = function (sample) {
+	return A2(
+		$lukewestby$elm_template$Template$render,
+		sample,
+		A2(
+			$lukewestby$elm_template$Template$withValue,
+			A2(
+				$elm$core$Basics$composeR,
+				function ($) {
+					return $.n;
+				},
+				$elm$core$String$fromInt),
+			$lukewestby$elm_template$Template$template('N = ')));
+};
+var $author$project$Binomial$roundFloat = F2(
+	function (digits, n) {
+		var div = A2($elm$core$Basics$pow, 10, digits);
+		var shifted = n * div;
+		return function (x) {
+			return x / div;
+		}(
+			$elm$core$Basics$round(shifted));
+	});
+var $author$project$Sample$propStr = function (sample) {
+	return A2(
+		$lukewestby$elm_template$Template$render,
+		sample,
+		A2(
+			$lukewestby$elm_template$Template$withValue,
+			A2(
+				$elm$core$Basics$composeR,
+				function ($) {
+					return $.p;
+				},
+				A2(
+					$elm$core$Basics$composeR,
+					$elm$core$Maybe$withDefault(0),
+					A2(
+						$elm$core$Basics$composeR,
+						$author$project$Binomial$roundFloat(3),
+						$elm$core$String$fromFloat))),
+			A2(
+				$lukewestby$elm_template$Template$withString,
+				') = ',
+				A2(
+					$lukewestby$elm_template$Template$withValue,
+					function ($) {
+						return $.successLbl;
+					},
+					$lukewestby$elm_template$Template$template('Prop(')))));
+};
+var $elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
+var $elm$html$Html$Attributes$style = $elm$virtual_dom$VirtualDom$style;
+var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
+var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
+var $author$project$Sample$sampleView = function (sample) {
+	return $author$project$Sample$isEmpty(sample) ? A2($elm$html$Html$div, _List_Nil, _List_Nil) : A2(
+		$elm$html$Html$div,
+		_List_fromArray(
+			[
+				A2($elm$html$Html$Attributes$style, 'font-size', 'smaller')
+			]),
+		_List_fromArray(
+			[
+				$elm$html$Html$text(
+				$author$project$Sample$nStr(sample)),
+				A2($elm$html$Html$br, _List_Nil, _List_Nil),
+				$elm$html$Html$text(
+				$author$project$Sample$countStr(sample)),
+				A2($elm$html$Html$br, _List_Nil, _List_Nil),
+				$elm$html$Html$text(
+				$author$project$Sample$propStr(sample)),
+				A2($elm$html$Html$br, _List_Nil, _List_Nil)
+			]));
+};
+var $author$project$Sample$maybeSampleView = A2(
+	$elm_community$maybe_extra$Maybe$Extra$unwrap,
+	A2($elm$html$Html$div, _List_Nil, _List_Nil),
+	$author$project$Sample$sampleView);
 var $rundis$elm_bootstrap$Bootstrap$Grid$Column = function (a) {
 	return {$: 'Column', a: a};
 };
@@ -14071,7 +14330,6 @@ var $rundis$elm_bootstrap$Bootstrap$Grid$col = F2(
 		return $rundis$elm_bootstrap$Bootstrap$Grid$Column(
 			{children: children, options: options});
 	});
-var $elm$html$Html$div = _VirtualDom_node('div');
 var $rundis$elm_bootstrap$Bootstrap$Form$applyModifier = F2(
 	function (modifier, options) {
 		var value = modifier.a;
@@ -14913,50 +15171,6 @@ var $rundis$elm_bootstrap$Bootstrap$Grid$row = F2(
 			$rundis$elm_bootstrap$Bootstrap$Grid$Internal$rowAttributes(options),
 			A2($elm$core$List$map, $rundis$elm_bootstrap$Bootstrap$Grid$renderCol, cols));
 	});
-var $elm$html$Html$br = _VirtualDom_node('br');
-var $author$project$Binomial$roundFloat = F2(
-	function (digits, n) {
-		var div = A2($elm$core$Basics$pow, 10, digits);
-		var shifted = n * div;
-		return function (x) {
-			return x / div;
-		}(
-			$elm$core$Basics$round(shifted));
-	});
-var $elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
-var $elm$html$Html$Attributes$style = $elm$virtual_dom$VirtualDom$style;
-var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
-var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
-var $author$project$Main$statisticView = F2(
-	function (dotSample, model) {
-		var _v0 = dotSample(model);
-		if (_v0.$ === 'Nothing') {
-			return A2($elm$html$Html$div, _List_Nil, _List_Nil);
-		} else {
-			var success = _v0.a;
-			var prop = $elm$core$String$fromFloat(
-				A2($author$project$Binomial$roundFloat, 3, success.numSuccess / success.n));
-			var n = $elm$core$String$fromInt(success.n);
-			var lbl = success.successLbl;
-			var emptySample = !(success.numSuccess + success.numFailures);
-			var cnt = $elm$core$String$fromInt(success.numSuccess);
-			return emptySample ? A2($elm$html$Html$div, _List_Nil, _List_Nil) : A2(
-				$elm$html$Html$div,
-				_List_fromArray(
-					[
-						A2($elm$html$Html$Attributes$style, 'font-size', 'smaller')
-					]),
-				_List_fromArray(
-					[
-						$elm$html$Html$text('N = ' + n),
-						A2($elm$html$Html$br, _List_Nil, _List_Nil),
-						$elm$html$Html$text('Count(' + (lbl + (') = ' + cnt))),
-						A2($elm$html$Html$br, _List_Nil, _List_Nil),
-						$elm$html$Html$text('Prop(' + (lbl + (') = ' + prop))),
-						A2($elm$html$Html$br, _List_Nil, _List_Nil)
-					]));
-		}
-	});
 var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col5 = {$: 'Col5'};
 var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$ColWidth = function (a) {
 	return {$: 'ColWidth', a: a};
@@ -14969,80 +15183,8 @@ var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$width = F2(
 var $rundis$elm_bootstrap$Bootstrap$Grid$Col$xs5 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$XS, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col5);
 var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col7 = {$: 'Col7'};
 var $rundis$elm_bootstrap$Bootstrap$Grid$Col$xs7 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$XS, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col7);
-var $author$project$Main$sampleGrid = F4(
-	function (dotSample, label, plotId, model) {
-		var _v0 = dotSample(model);
-		if (_v0.$ === 'Nothing') {
-			return A2($elm$html$Html$div, _List_Nil, _List_Nil);
-		} else {
-			return A2(
-				$elm$html$Html$div,
-				_List_Nil,
-				_List_fromArray(
-					[
-						A2(
-						$rundis$elm_bootstrap$Bootstrap$Form$group,
-						_List_Nil,
-						_List_fromArray(
-							[
-								A2(
-								$elm$html$Html$h4,
-								_List_Nil,
-								_List_fromArray(
-									[
-										$elm$html$Html$text(label)
-									])),
-								A2(
-								$rundis$elm_bootstrap$Bootstrap$Grid$row,
-								_List_Nil,
-								_List_fromArray(
-									[
-										A2(
-										$rundis$elm_bootstrap$Bootstrap$Grid$col,
-										_List_fromArray(
-											[$rundis$elm_bootstrap$Bootstrap$Grid$Col$xs7]),
-										_List_fromArray(
-											[
-												A2(
-												$elm$html$Html$div,
-												_List_fromArray(
-													[
-														$elm$html$Html$Attributes$id(plotId)
-													]),
-												_List_Nil)
-											])),
-										A2(
-										$rundis$elm_bootstrap$Bootstrap$Grid$col,
-										_List_fromArray(
-											[$rundis$elm_bootstrap$Bootstrap$Grid$Col$xs5]),
-										_List_fromArray(
-											[
-												A2($author$project$Main$statisticView, dotSample, model)
-											]))
-									]))
-							]))
-					]));
-		}
-	});
-var $author$project$Main$bootstrapSampleView = A3(
-	$author$project$Main$sampleGrid,
-	function ($) {
-		return $.bootstrapSample;
-	},
-	'Bootstrap Sample',
-	'bootstrapPlot');
-var $author$project$Main$Collect = function (a) {
-	return {$: 'Collect', a: a};
-};
-var $author$project$Main$Reset = {$: 'Reset'};
-var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col10 = {$: 'Col10'};
-var $rundis$elm_bootstrap$Bootstrap$Grid$Col$xs10 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$XS, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col10);
-var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col3 = {$: 'Col3'};
-var $rundis$elm_bootstrap$Bootstrap$Grid$Col$xs3 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$XS, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col3);
-var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col9 = {$: 'Col9'};
-var $rundis$elm_bootstrap$Bootstrap$Grid$Col$xs9 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$XS, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col9);
-var $author$project$Main$collectButtonGrid = F3(
-	function (reset, buttons, count) {
+var $author$project$Main$sampleGrid = F3(
+	function (label, plotId, s) {
 		return A2(
 			$elm$html$Html$div,
 			_List_Nil,
@@ -15054,6 +15196,13 @@ var $author$project$Main$collectButtonGrid = F3(
 					_List_fromArray(
 						[
 							A2(
+							$elm$html$Html$h4,
+							_List_Nil,
+							_List_fromArray(
+								[
+									$elm$html$Html$text(label)
+								])),
+							A2(
 							$rundis$elm_bootstrap$Bootstrap$Grid$row,
 							_List_Nil,
 							_List_fromArray(
@@ -15061,159 +15210,59 @@ var $author$project$Main$collectButtonGrid = F3(
 									A2(
 									$rundis$elm_bootstrap$Bootstrap$Grid$col,
 									_List_fromArray(
-										[$rundis$elm_bootstrap$Bootstrap$Grid$Col$xs9]),
+										[$rundis$elm_bootstrap$Bootstrap$Grid$Col$xs7]),
 									_List_fromArray(
 										[
 											A2(
-											$elm$html$Html$h4,
-											_List_Nil,
+											$elm$html$Html$div,
 											_List_fromArray(
 												[
-													$elm$html$Html$text('Collect Statistics')
-												]))
+													$elm$html$Html$Attributes$id(plotId)
+												]),
+											_List_Nil)
 										])),
 									A2(
 									$rundis$elm_bootstrap$Bootstrap$Grid$col,
 									_List_fromArray(
-										[$rundis$elm_bootstrap$Bootstrap$Grid$Col$xs3]),
+										[$rundis$elm_bootstrap$Bootstrap$Grid$Col$xs5]),
 									_List_fromArray(
-										[reset]))
-								])),
-							A2(
-							$rundis$elm_bootstrap$Bootstrap$Grid$row,
-							_List_Nil,
-							_List_fromArray(
-								[
-									A2(
-									$rundis$elm_bootstrap$Bootstrap$Grid$col,
-									_List_fromArray(
-										[$rundis$elm_bootstrap$Bootstrap$Grid$Col$xs10]),
-									_List_fromArray(
-										[buttons]))
-								])),
-							A2(
-							$rundis$elm_bootstrap$Bootstrap$Grid$row,
-							_List_Nil,
-							_List_fromArray(
-								[
-									A2(
-									$rundis$elm_bootstrap$Bootstrap$Grid$col,
-									_List_fromArray(
-										[$rundis$elm_bootstrap$Bootstrap$Grid$Col$xs10]),
-									_List_fromArray(
-										[count]))
+										[s]))
 								]))
 						]))
 				]));
 	});
-var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$Attrs = function (a) {
+var $author$project$Main$bootstrapSampleView = function (model) {
+	return A3(
+		$author$project$Main$sampleGrid,
+		'Bootstrap Sample',
+		'bootstrapPlot',
+		$author$project$Sample$maybeSampleView(model.bootstrapSample));
+};
+var $author$project$Main$CloseModal = {$: 'CloseModal'};
+var $rundis$elm_bootstrap$Bootstrap$Internal$Button$Attrs = function (a) {
 	return {$: 'Attrs', a: a};
 };
-var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$attrs = function (attrs_) {
-	return $rundis$elm_bootstrap$Bootstrap$ButtonGroup$Attrs(attrs_);
+var $rundis$elm_bootstrap$Bootstrap$Button$attrs = function (attrs_) {
+	return $rundis$elm_bootstrap$Bootstrap$Internal$Button$Attrs(attrs_);
 };
-var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$GroupItem = function (a) {
-	return {$: 'GroupItem', a: a};
+var $rundis$elm_bootstrap$Bootstrap$Modal$Body = function (a) {
+	return {$: 'Body', a: a};
 };
-var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$applyModifier = F2(
-	function (modifier, options) {
-		switch (modifier.$) {
-			case 'Size':
-				var size = modifier.a;
-				return _Utils_update(
-					options,
-					{
-						size: $elm$core$Maybe$Just(size)
-					});
-			case 'Vertical':
-				return _Utils_update(
-					options,
-					{vertical: true});
-			default:
-				var attrs_ = modifier.a;
-				return _Utils_update(
-					options,
-					{
-						attributes: _Utils_ap(options.attributes, attrs_)
-					});
-		}
-	});
-var $elm$virtual_dom$VirtualDom$attribute = F2(
-	function (key, value) {
-		return A2(
-			_VirtualDom_attribute,
-			_VirtualDom_noOnOrFormAction(key),
-			_VirtualDom_noJavaScriptOrHtmlUri(value));
-	});
-var $elm$html$Html$Attributes$attribute = $elm$virtual_dom$VirtualDom$attribute;
-var $elm$html$Html$Attributes$classList = function (classes) {
-	return $elm$html$Html$Attributes$class(
-		A2(
-			$elm$core$String$join,
-			' ',
-			A2(
-				$elm$core$List$map,
-				$elm$core$Tuple$first,
-				A2($elm$core$List$filter, $elm$core$Tuple$second, classes))));
+var $rundis$elm_bootstrap$Bootstrap$Modal$Config = function (a) {
+	return {$: 'Config', a: a};
 };
-var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$defaultOptions = {attributes: _List_Nil, size: $elm$core$Maybe$Nothing, vertical: false};
-var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$groupAttributes = F2(
-	function (toggle, modifiers) {
-		var options = A3($elm$core$List$foldl, $rundis$elm_bootstrap$Bootstrap$ButtonGroup$applyModifier, $rundis$elm_bootstrap$Bootstrap$ButtonGroup$defaultOptions, modifiers);
-		return _Utils_ap(
-			_List_fromArray(
-				[
-					A2($elm$html$Html$Attributes$attribute, 'role', 'group'),
-					$elm$html$Html$Attributes$classList(
-					_List_fromArray(
-						[
-							_Utils_Tuple2('btn-group', true),
-							_Utils_Tuple2('btn-group-toggle', toggle),
-							_Utils_Tuple2('btn-group-vertical', options.vertical)
-						])),
-					A2($elm$html$Html$Attributes$attribute, 'data-toggle', 'buttons')
-				]),
-			_Utils_ap(
-				function () {
-					var _v0 = A2($elm$core$Maybe$andThen, $rundis$elm_bootstrap$Bootstrap$General$Internal$screenSizeOption, options.size);
-					if (_v0.$ === 'Just') {
-						var s = _v0.a;
-						return _List_fromArray(
-							[
-								$elm$html$Html$Attributes$class('btn-group-' + s)
-							]);
-					} else {
-						return _List_Nil;
-					}
-				}(),
-				options.attributes));
+var $rundis$elm_bootstrap$Bootstrap$Modal$body = F3(
+	function (attributes, children, _v0) {
+		var conf = _v0.a;
+		return $rundis$elm_bootstrap$Bootstrap$Modal$Config(
+			_Utils_update(
+				conf,
+				{
+					body: $elm$core$Maybe$Just(
+						$rundis$elm_bootstrap$Bootstrap$Modal$Body(
+							{attributes: attributes, children: children}))
+				}));
 	});
-var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$buttonGroupItem = F2(
-	function (options, items) {
-		return $rundis$elm_bootstrap$Bootstrap$ButtonGroup$GroupItem(
-			A2(
-				$elm$html$Html$div,
-				A2($rundis$elm_bootstrap$Bootstrap$ButtonGroup$groupAttributes, false, options),
-				A2(
-					$elm$core$List$map,
-					function (_v0) {
-						var elem = _v0.a;
-						return elem;
-					},
-					items)));
-	});
-var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$renderGroup = function (_v0) {
-	var elem = _v0.a;
-	return elem;
-};
-var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$buttonGroup = F2(
-	function (options, items) {
-		return $rundis$elm_bootstrap$Bootstrap$ButtonGroup$renderGroup(
-			A2($rundis$elm_bootstrap$Bootstrap$ButtonGroup$buttonGroupItem, options, items));
-	});
-var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$ButtonItem = function (a) {
-	return {$: 'ButtonItem', a: a};
-};
 var $elm$html$Html$button = _VirtualDom_node('button');
 var $rundis$elm_bootstrap$Bootstrap$Internal$Button$applyModifier = F2(
 	function (modifier, options) {
@@ -15250,6 +15299,16 @@ var $rundis$elm_bootstrap$Bootstrap$Internal$Button$applyModifier = F2(
 					});
 		}
 	});
+var $elm$html$Html$Attributes$classList = function (classes) {
+	return $elm$html$Html$Attributes$class(
+		A2(
+			$elm$core$String$join,
+			' ',
+			A2(
+				$elm$core$List$map,
+				$elm$core$Tuple$first,
+				A2($elm$core$List$filter, $elm$core$Tuple$second, classes))));
+};
 var $rundis$elm_bootstrap$Bootstrap$Internal$Button$defaultOptions = {attributes: _List_Nil, block: false, coloring: $elm$core$Maybe$Nothing, disabled: false, size: $elm$core$Maybe$Nothing};
 var $elm$html$Html$Attributes$boolProperty = F2(
 	function (key, bool) {
@@ -15340,522 +15399,6 @@ var $rundis$elm_bootstrap$Bootstrap$Button$button = F2(
 			$rundis$elm_bootstrap$Bootstrap$Internal$Button$buttonAttributes(options),
 			children);
 	});
-var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$button = F2(
-	function (options, children) {
-		return $rundis$elm_bootstrap$Bootstrap$ButtonGroup$ButtonItem(
-			A2($rundis$elm_bootstrap$Bootstrap$Button$button, options, children));
-	});
-var $author$project$Display$changeThousandsToK = function (n) {
-	var zeros = $elm$core$Basics$round(
-		A2($elm$core$Basics$logBase, 10, n));
-	return (zeros < 3) ? $elm$core$String$fromInt(n) : ($elm$core$String$fromInt(
-		A2($elm$core$Basics$pow, 10, zeros - 3)) + 'K');
-};
-var $rundis$elm_bootstrap$Bootstrap$Internal$Button$Attrs = function (a) {
-	return {$: 'Attrs', a: a};
-};
-var $rundis$elm_bootstrap$Bootstrap$Button$attrs = function (attrs_) {
-	return $rundis$elm_bootstrap$Bootstrap$Internal$Button$Attrs(attrs_);
-};
-var $elm$virtual_dom$VirtualDom$MayPreventDefault = function (a) {
-	return {$: 'MayPreventDefault', a: a};
-};
-var $elm$virtual_dom$VirtualDom$on = _VirtualDom_on;
-var $elm$html$Html$Events$preventDefaultOn = F2(
-	function (event, decoder) {
-		return A2(
-			$elm$virtual_dom$VirtualDom$on,
-			event,
-			$elm$virtual_dom$VirtualDom$MayPreventDefault(decoder));
-	});
-var $rundis$elm_bootstrap$Bootstrap$Button$onClick = function (message) {
-	return $rundis$elm_bootstrap$Bootstrap$Button$attrs(
-		_List_fromArray(
-			[
-				A2(
-				$elm$html$Html$Events$preventDefaultOn,
-				'click',
-				$elm$json$Json$Decode$succeed(
-					_Utils_Tuple2(message, true)))
-			]));
-};
-var $rundis$elm_bootstrap$Bootstrap$Internal$Button$Coloring = function (a) {
-	return {$: 'Coloring', a: a};
-};
-var $rundis$elm_bootstrap$Bootstrap$Internal$Button$Primary = {$: 'Primary'};
-var $rundis$elm_bootstrap$Bootstrap$Internal$Button$Roled = function (a) {
-	return {$: 'Roled', a: a};
-};
-var $rundis$elm_bootstrap$Bootstrap$Button$primary = $rundis$elm_bootstrap$Bootstrap$Internal$Button$Coloring(
-	$rundis$elm_bootstrap$Bootstrap$Internal$Button$Roled($rundis$elm_bootstrap$Bootstrap$Internal$Button$Primary));
-var $author$project$CollectButtons$collectButton = F2(
-	function (toOnClick, n) {
-		return A2(
-			$rundis$elm_bootstrap$Bootstrap$ButtonGroup$button,
-			_List_fromArray(
-				[
-					$rundis$elm_bootstrap$Bootstrap$Button$primary,
-					$rundis$elm_bootstrap$Bootstrap$Button$onClick(
-					toOnClick(n))
-				]),
-			_List_fromArray(
-				[
-					$elm$html$Html$text(
-					$author$project$Display$changeThousandsToK(n))
-				]));
-	});
-var $rundis$elm_bootstrap$Bootstrap$General$Internal$SM = {$: 'SM'};
-var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$Size = function (a) {
-	return {$: 'Size', a: a};
-};
-var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$small = $rundis$elm_bootstrap$Bootstrap$ButtonGroup$Size($rundis$elm_bootstrap$Bootstrap$General$Internal$SM);
-var $author$project$CollectButtons$collectButtons = F2(
-	function (toOnClick, ns) {
-		return A2(
-			$elm$html$Html$div,
-			_List_Nil,
-			_List_fromArray(
-				[
-					A2(
-					$rundis$elm_bootstrap$Bootstrap$ButtonGroup$buttonGroup,
-					_List_fromArray(
-						[
-							$rundis$elm_bootstrap$Bootstrap$ButtonGroup$small,
-							$rundis$elm_bootstrap$Bootstrap$ButtonGroup$attrs(
-							_List_fromArray(
-								[
-									A2($elm$html$Html$Attributes$style, 'display', 'block')
-								]))
-						]),
-					A2(
-						$elm$core$List$map,
-						$author$project$CollectButtons$collectButton(toOnClick),
-						ns))
-				]));
-	});
-var $elm$core$Basics$neq = _Utils_notEqual;
-var $rundis$elm_bootstrap$Bootstrap$Internal$Button$Size = function (a) {
-	return {$: 'Size', a: a};
-};
-var $rundis$elm_bootstrap$Bootstrap$Button$small = $rundis$elm_bootstrap$Bootstrap$Internal$Button$Size($rundis$elm_bootstrap$Bootstrap$General$Internal$SM);
-var $author$project$CollectButtons$resetButton = function (onClickMsg) {
-	return A2(
-		$rundis$elm_bootstrap$Bootstrap$Button$button,
-		_List_fromArray(
-			[
-				$rundis$elm_bootstrap$Bootstrap$Button$primary,
-				$rundis$elm_bootstrap$Bootstrap$Button$onClick(onClickMsg),
-				$rundis$elm_bootstrap$Bootstrap$Button$small
-			]),
-		_List_fromArray(
-			[
-				$elm$html$Html$text('Reset')
-			]));
-};
-var $elm$core$String$right = F2(
-	function (n, string) {
-		return (n < 1) ? '' : A3(
-			$elm$core$String$slice,
-			-n,
-			$elm$core$String$length(string),
-			string);
-	});
-var $author$project$Display$pullOffThree = function (s) {
-	var n = $elm$core$String$length(s);
-	return (!n) ? $elm$core$Maybe$Nothing : ((n >= 3) ? $elm$core$Maybe$Just(
-		_Utils_Tuple2(
-			A2($elm$core$String$right, 3, s),
-			A2($elm$core$String$left, n - 3, s))) : $elm$core$Maybe$Just(
-		_Utils_Tuple2(s, '')));
-};
-var $elm_community$list_extra$List$Extra$unfoldr = F2(
-	function (f, seed) {
-		var _v0 = f(seed);
-		if (_v0.$ === 'Nothing') {
-			return _List_Nil;
-		} else {
-			var _v1 = _v0.a;
-			var a = _v1.a;
-			var b = _v1.b;
-			return A2(
-				$elm$core$List$cons,
-				a,
-				A2($elm_community$list_extra$List$Extra$unfoldr, f, b));
-		}
-	});
-var $author$project$Display$stringAndAddCommas = function (n) {
-	return A2(
-		$elm$core$String$join,
-		',',
-		$elm$core$List$reverse(
-			A2(
-				$elm_community$list_extra$List$Extra$unfoldr,
-				$author$project$Display$pullOffThree,
-				$elm$core$String$fromInt(n))));
-};
-var $author$project$CollectButtons$totalCollectedTxt = function (numTrials) {
-	return $elm$html$Html$text(
-		$author$project$Display$stringAndAddCommas(numTrials) + ' statistics collected');
-};
-var $author$project$Main$collectButtonView = function (model) {
-	return A3(
-		$author$project$Main$collectButtonGrid,
-		$author$project$CollectButtons$resetButton($author$project$Main$Reset),
-		(!_Utils_eq(model.originalSample, $elm$core$Maybe$Nothing)) ? A2($author$project$CollectButtons$collectButtons, $author$project$Main$Collect, $author$project$Defaults$defaults.collectNs) : A2($elm$html$Html$div, _List_Nil, _List_Nil),
-		$author$project$CollectButtons$totalCollectedTxt(model.trials));
-};
-var $elm$html$Html$b = _VirtualDom_node('b');
-var $rundis$elm_bootstrap$Bootstrap$Grid$ColBreak = function (a) {
-	return {$: 'ColBreak', a: a};
-};
-var $rundis$elm_bootstrap$Bootstrap$Grid$colBreak = function (attributes) {
-	return $rundis$elm_bootstrap$Bootstrap$Grid$ColBreak(
-		A2(
-			$elm$html$Html$div,
-			_Utils_ap(
-				_List_fromArray(
-					[
-						$elm$html$Html$Attributes$class('w-100')
-					]),
-				attributes),
-			_List_Nil));
-};
-var $rundis$elm_bootstrap$Bootstrap$Grid$container = F2(
-	function (attributes, children) {
-		return A2(
-			$elm$html$Html$div,
-			_Utils_ap(
-				_List_fromArray(
-					[
-						$elm$html$Html$Attributes$class('container')
-					]),
-				attributes),
-			children);
-	});
-var $author$project$Main$ChangeLevel = function (a) {
-	return {$: 'ChangeLevel', a: a};
-};
-var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$RadioButtonItem = function (a) {
-	return {$: 'RadioButtonItem', a: a};
-};
-var $elm$html$Html$Attributes$autocomplete = function (bool) {
-	return A2(
-		$elm$html$Html$Attributes$stringProperty,
-		'autocomplete',
-		bool ? 'on' : 'off');
-};
-var $elm$html$Html$Attributes$checked = $elm$html$Html$Attributes$boolProperty('checked');
-var $elm$html$Html$input = _VirtualDom_node('input');
-var $elm$html$Html$label = _VirtualDom_node('label');
-var $elm$html$Html$Attributes$type_ = $elm$html$Html$Attributes$stringProperty('type');
-var $rundis$elm_bootstrap$Bootstrap$Button$radioButton = F3(
-	function (checked, options, children) {
-		var hideRadio = A2($elm$html$Html$Attributes$attribute, 'data-toggle', 'button');
-		return A2(
-			$elm$html$Html$label,
-			A2(
-				$elm$core$List$cons,
-				$elm$html$Html$Attributes$classList(
-					_List_fromArray(
-						[
-							_Utils_Tuple2('active', checked)
-						])),
-				A2(
-					$elm$core$List$cons,
-					hideRadio,
-					$rundis$elm_bootstrap$Bootstrap$Internal$Button$buttonAttributes(options))),
-			A2(
-				$elm$core$List$cons,
-				A2(
-					$elm$html$Html$input,
-					_List_fromArray(
-						[
-							$elm$html$Html$Attributes$type_('radio'),
-							$elm$html$Html$Attributes$checked(checked),
-							$elm$html$Html$Attributes$autocomplete(false)
-						]),
-					_List_Nil),
-				children));
-	});
-var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$radioButton = F3(
-	function (checked, options, children) {
-		return $rundis$elm_bootstrap$Bootstrap$ButtonGroup$RadioButtonItem(
-			A3($rundis$elm_bootstrap$Bootstrap$Button$radioButton, checked, options, children));
-	});
-var $author$project$Main$makeLevelButton = F3(
-	function (model, conf, txt) {
-		return A3(
-			$rundis$elm_bootstrap$Bootstrap$ButtonGroup$radioButton,
-			function () {
-				var _v0 = model.level;
-				if (_v0.$ === 'Nothing') {
-					return false;
-				} else {
-					var lvl = _v0.a;
-					return _Utils_eq(lvl, conf);
-				}
-			}(),
-			_List_fromArray(
-				[
-					$rundis$elm_bootstrap$Bootstrap$Button$primary,
-					$rundis$elm_bootstrap$Bootstrap$Button$small,
-					$rundis$elm_bootstrap$Bootstrap$Button$onClick(
-					$author$project$Main$ChangeLevel(conf))
-				]),
-			_List_fromArray(
-				[
-					$elm$html$Html$text(txt)
-				]));
-	});
-var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$radioButtonGroupItem = F2(
-	function (options, items) {
-		return $rundis$elm_bootstrap$Bootstrap$ButtonGroup$GroupItem(
-			A2(
-				$elm$html$Html$div,
-				A2($rundis$elm_bootstrap$Bootstrap$ButtonGroup$groupAttributes, true, options),
-				A2(
-					$elm$core$List$map,
-					function (_v0) {
-						var elem = _v0.a;
-						return elem;
-					},
-					items)));
-	});
-var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$radioButtonGroup = F2(
-	function (options, items) {
-		return $rundis$elm_bootstrap$Bootstrap$ButtonGroup$renderGroup(
-			A2($rundis$elm_bootstrap$Bootstrap$ButtonGroup$radioButtonGroupItem, options, items));
-	});
-var $author$project$Main$levelButtonView = function (model) {
-	return A2(
-		$rundis$elm_bootstrap$Bootstrap$ButtonGroup$radioButtonGroup,
-		_List_Nil,
-		A3(
-			$elm$core$List$map2,
-			$author$project$Main$makeLevelButton(model),
-			$author$project$Defaults$defaults.levels,
-			$author$project$Defaults$defaults.levelsTxt));
-};
-var $author$project$Main$outputText = function (model) {
-	var _v0 = model.tailLimit;
-	switch (_v0.$) {
-		case 'NoBounds':
-			return '??';
-		case 'Lower':
-			var l = _v0.a;
-			return 'p > ' + $elm$core$String$fromFloat(
-				A2($author$project$Binomial$roundFloat, 4, l));
-		case 'Upper':
-			var u = _v0.a;
-			return 'p < ' + $elm$core$String$fromFloat(
-				A2($author$project$Binomial$roundFloat, 4, u));
-		default:
-			var l = _v0.a;
-			var u = _v0.b;
-			return $elm$core$String$fromFloat(
-				A2($author$project$Binomial$roundFloat, 4, l)) + (' < p < ' + $elm$core$String$fromFloat(
-				A2($author$project$Binomial$roundFloat, 4, u)));
-	}
-};
-var $rundis$elm_bootstrap$Bootstrap$Grid$Col$sm3 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$SM, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col3);
-var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col8 = {$: 'Col8'};
-var $rundis$elm_bootstrap$Bootstrap$Grid$Col$sm8 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$SM, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col8);
-var $author$project$Main$ChangeTail = function (a) {
-	return {$: 'ChangeTail', a: a};
-};
-var $author$project$Limits$Left = {$: 'Left'};
-var $author$project$Limits$Right = {$: 'Right'};
-var $author$project$Limits$Two = {$: 'Two'};
-var $author$project$Main$tailButtonView = function (model) {
-	return A2(
-		$rundis$elm_bootstrap$Bootstrap$ButtonGroup$radioButtonGroup,
-		_List_Nil,
-		_List_fromArray(
-			[
-				A3(
-				$rundis$elm_bootstrap$Bootstrap$ButtonGroup$radioButton,
-				_Utils_eq(model.tail, $author$project$Limits$Left),
-				_List_fromArray(
-					[
-						$rundis$elm_bootstrap$Bootstrap$Button$primary,
-						$rundis$elm_bootstrap$Bootstrap$Button$small,
-						$rundis$elm_bootstrap$Bootstrap$Button$onClick(
-						$author$project$Main$ChangeTail($author$project$Limits$Left))
-					]),
-				_List_fromArray(
-					[
-						$elm$html$Html$text('Left')
-					])),
-				A3(
-				$rundis$elm_bootstrap$Bootstrap$ButtonGroup$radioButton,
-				_Utils_eq(model.tail, $author$project$Limits$Right),
-				_List_fromArray(
-					[
-						$rundis$elm_bootstrap$Bootstrap$Button$primary,
-						$rundis$elm_bootstrap$Bootstrap$Button$small,
-						$rundis$elm_bootstrap$Bootstrap$Button$onClick(
-						$author$project$Main$ChangeTail($author$project$Limits$Right))
-					]),
-				_List_fromArray(
-					[
-						$elm$html$Html$text('Right')
-					])),
-				A3(
-				$rundis$elm_bootstrap$Bootstrap$ButtonGroup$radioButton,
-				_Utils_eq(model.tail, $author$project$Limits$Two),
-				_List_fromArray(
-					[
-						$rundis$elm_bootstrap$Bootstrap$Button$primary,
-						$rundis$elm_bootstrap$Bootstrap$Button$small,
-						$rundis$elm_bootstrap$Bootstrap$Button$onClick(
-						$author$project$Main$ChangeTail($author$project$Limits$Two))
-					]),
-				_List_fromArray(
-					[
-						$elm$html$Html$text('Two')
-					]))
-			]));
-};
-var $author$project$Main$confLimitsView = function (model) {
-	return A2(
-		$elm$html$Html$div,
-		_List_Nil,
-		_List_fromArray(
-			[
-				A2(
-				$rundis$elm_bootstrap$Bootstrap$Form$group,
-				_List_Nil,
-				_List_fromArray(
-					[
-						A2(
-						$rundis$elm_bootstrap$Bootstrap$Grid$row,
-						_List_Nil,
-						_List_fromArray(
-							[
-								A2(
-								$rundis$elm_bootstrap$Bootstrap$Grid$col,
-								_List_fromArray(
-									[$rundis$elm_bootstrap$Bootstrap$Grid$Col$xs9]),
-								_List_fromArray(
-									[
-										A2(
-										$elm$html$Html$h4,
-										_List_Nil,
-										_List_fromArray(
-											[
-												$elm$html$Html$text('Confidence Interval')
-											])),
-										A2(
-										$elm$html$Html$div,
-										_List_Nil,
-										_List_fromArray(
-											[
-												A2(
-												$rundis$elm_bootstrap$Bootstrap$Grid$container,
-												_List_Nil,
-												_List_fromArray(
-													[
-														A2(
-														$rundis$elm_bootstrap$Bootstrap$Grid$row,
-														_List_Nil,
-														_List_fromArray(
-															[
-																A2(
-																$rundis$elm_bootstrap$Bootstrap$Grid$col,
-																_List_fromArray(
-																	[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm3]),
-																_List_fromArray(
-																	[
-																		A2(
-																		$elm$html$Html$b,
-																		_List_Nil,
-																		_List_fromArray(
-																			[
-																				$elm$html$Html$text('Tail')
-																			]))
-																	])),
-																A2(
-																$rundis$elm_bootstrap$Bootstrap$Grid$col,
-																_List_fromArray(
-																	[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm8]),
-																_List_fromArray(
-																	[
-																		$author$project$Main$tailButtonView(model)
-																	])),
-																$rundis$elm_bootstrap$Bootstrap$Grid$colBreak(_List_Nil),
-																A2(
-																$rundis$elm_bootstrap$Bootstrap$Grid$col,
-																_List_fromArray(
-																	[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm3]),
-																_List_fromArray(
-																	[
-																		A2(
-																		$elm$html$Html$b,
-																		_List_Nil,
-																		_List_fromArray(
-																			[
-																				$elm$html$Html$text('Level')
-																			]))
-																	])),
-																A2(
-																$rundis$elm_bootstrap$Bootstrap$Grid$col,
-																_List_fromArray(
-																	[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm8]),
-																_List_fromArray(
-																	[
-																		$author$project$Main$levelButtonView(model)
-																	])),
-																$rundis$elm_bootstrap$Bootstrap$Grid$colBreak(_List_Nil),
-																A2(
-																$rundis$elm_bootstrap$Bootstrap$Grid$col,
-																_List_fromArray(
-																	[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm3]),
-																_List_fromArray(
-																	[
-																		A2(
-																		$elm$html$Html$b,
-																		_List_Nil,
-																		_List_fromArray(
-																			[
-																				$elm$html$Html$text('Interval')
-																			]))
-																	])),
-																A2(
-																$rundis$elm_bootstrap$Bootstrap$Grid$col,
-																_List_fromArray(
-																	[$rundis$elm_bootstrap$Bootstrap$Grid$Col$sm8]),
-																_List_fromArray(
-																	[
-																		$elm$html$Html$text(
-																		$author$project$Main$outputText(model))
-																	]))
-															]))
-													]))
-											]))
-									]))
-							]))
-					]))
-			]));
-};
-var $author$project$Main$CloseModal = {$: 'CloseModal'};
-var $rundis$elm_bootstrap$Bootstrap$Modal$Body = function (a) {
-	return {$: 'Body', a: a};
-};
-var $rundis$elm_bootstrap$Bootstrap$Modal$Config = function (a) {
-	return {$: 'Config', a: a};
-};
-var $rundis$elm_bootstrap$Bootstrap$Modal$body = F3(
-	function (attributes, children, _v0) {
-		var conf = _v0.a;
-		return $rundis$elm_bootstrap$Bootstrap$Modal$Config(
-			_Utils_update(
-				conf,
-				{
-					body: $elm$core$Maybe$Just(
-						$rundis$elm_bootstrap$Bootstrap$Modal$Body(
-							{attributes: attributes, children: children}))
-				}));
-	});
 var $rundis$elm_bootstrap$Bootstrap$Modal$config = function (closeMsg) {
 	return $rundis$elm_bootstrap$Bootstrap$Modal$Config(
 		{
@@ -15867,11 +15410,20 @@ var $rundis$elm_bootstrap$Bootstrap$Modal$config = function (closeMsg) {
 			withAnimation: $elm$core$Maybe$Nothing
 		});
 };
+var $rundis$elm_bootstrap$Bootstrap$Internal$Button$Coloring = function (a) {
+	return {$: 'Coloring', a: a};
+};
 var $rundis$elm_bootstrap$Bootstrap$Internal$Button$Outlined = function (a) {
 	return {$: 'Outlined', a: a};
 };
+var $rundis$elm_bootstrap$Bootstrap$Internal$Button$Primary = {$: 'Primary'};
 var $rundis$elm_bootstrap$Bootstrap$Button$outlinePrimary = $rundis$elm_bootstrap$Bootstrap$Internal$Button$Coloring(
 	$rundis$elm_bootstrap$Bootstrap$Internal$Button$Outlined($rundis$elm_bootstrap$Bootstrap$Internal$Button$Primary));
+var $rundis$elm_bootstrap$Bootstrap$General$Internal$SM = {$: 'SM'};
+var $rundis$elm_bootstrap$Bootstrap$Internal$Button$Size = function (a) {
+	return {$: 'Size', a: a};
+};
+var $rundis$elm_bootstrap$Bootstrap$Button$small = $rundis$elm_bootstrap$Bootstrap$Internal$Button$Size($rundis$elm_bootstrap$Bootstrap$General$Internal$SM);
 var $rundis$elm_bootstrap$Bootstrap$Dropdown$DropdownToggle = function (a) {
 	return {$: 'DropdownToggle', a: a};
 };
@@ -16041,6 +15593,7 @@ var $rundis$elm_bootstrap$Bootstrap$Dropdown$clickHandler = F2(
 var $elm$virtual_dom$VirtualDom$Normal = function (a) {
 	return {$: 'Normal', a: a};
 };
+var $elm$virtual_dom$VirtualDom$on = _VirtualDom_on;
 var $elm$html$Html$Events$on = F2(
 	function (event, decoder) {
 		return A2(
@@ -16048,6 +15601,7 @@ var $elm$html$Html$Events$on = F2(
 			event,
 			$elm$virtual_dom$VirtualDom$Normal(decoder));
 	});
+var $elm$html$Html$Attributes$type_ = $elm$html$Html$Attributes$stringProperty('type');
 var $rundis$elm_bootstrap$Bootstrap$Dropdown$togglePrivate = F4(
 	function (buttonOptions, children, toggleMsg, state) {
 		return A2(
@@ -16139,8 +15693,19 @@ var $author$project$Main$dropdownData = function (model) {
 			},
 			model.datasets));
 };
+var $author$project$Main$dataDropdownConfig = function (model) {
+	return {
+		button: $author$project$Main$dataButtonToggle(model),
+		items: $author$project$Main$dropdownData(model),
+		label: 'Data',
+		placeholder: $author$project$Main$dataPlaceholder(model),
+		state: model.dataDropState,
+		toggle: $author$project$Main$DataDropMsg
+	};
+};
 var $rundis$elm_bootstrap$Bootstrap$Dropdown$AlignMenuRight = {$: 'AlignMenuRight'};
 var $rundis$elm_bootstrap$Bootstrap$Dropdown$alignMenuRight = $rundis$elm_bootstrap$Bootstrap$Dropdown$AlignMenuRight;
+var $elm$html$Html$b = _VirtualDom_node('b');
 var $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$Config = function (a) {
 	return {$: 'Config', a: a};
 };
@@ -16176,6 +15741,7 @@ var $rundis$elm_bootstrap$Bootstrap$Dropdown$dropDir = function (maybeDir) {
 		_List_Nil,
 		A2($elm$core$Maybe$map, toAttrs, maybeDir));
 };
+var $elm$core$Basics$neq = _Utils_notEqual;
 var $rundis$elm_bootstrap$Bootstrap$Dropdown$dropdownAttributes = F2(
 	function (status, config) {
 		return _Utils_ap(
@@ -16436,6 +16002,7 @@ var $rundis$elm_bootstrap$Bootstrap$Form$Input$create = F2(
 					options)
 			});
 	});
+var $elm$html$Html$input = _VirtualDom_node('input');
 var $rundis$elm_bootstrap$Bootstrap$Form$Input$applyModifier = F2(
 	function (modifier, options) {
 		switch (modifier.$) {
@@ -16694,62 +16261,51 @@ var $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$view = function (_v0) {
 					},
 					conf.successors))));
 };
-var $author$project$Main$genericDropdown = F7(
-	function (placeholder, lbl, state, msg, toggle, items, model) {
-		return $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$view(
+var $author$project$Dropdown$genericDropdown = function (config) {
+	return $rundis$elm_bootstrap$Bootstrap$Form$InputGroup$view(
+		A2(
+			$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$successors,
+			_List_fromArray(
+				[
+					A2(
+					$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$dropdown,
+					config.state,
+					{
+						items: config.items,
+						options: _List_fromArray(
+							[$rundis$elm_bootstrap$Bootstrap$Dropdown$alignMenuRight]),
+						toggleButton: config.button,
+						toggleMsg: config.toggle
+					})
+				]),
 			A2(
-				$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$successors,
+				$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$predecessors,
 				_List_fromArray(
 					[
 						A2(
-						$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$dropdown,
-						state(model),
-						{
-							items: items(model),
-							options: _List_fromArray(
-								[$rundis$elm_bootstrap$Bootstrap$Dropdown$alignMenuRight]),
-							toggleButton: toggle(model),
-							toggleMsg: msg
-						})
-					]),
-				A2(
-					$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$predecessors,
-					_List_fromArray(
-						[
-							A2(
-							$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$span,
-							_List_Nil,
-							_List_fromArray(
-								[
-									A2(
-									$elm$html$Html$b,
-									_List_Nil,
-									_List_fromArray(
-										[
-											$elm$html$Html$text(lbl)
-										]))
-								]))
-						]),
-					$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$small(
-						$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$config(
-							$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$text(
+						$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$span,
+						_List_Nil,
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$b,
+								_List_Nil,
 								_List_fromArray(
 									[
-										$rundis$elm_bootstrap$Bootstrap$Form$Input$placeholder(
-										placeholder(model)),
-										$rundis$elm_bootstrap$Bootstrap$Form$Input$disabled(true)
-									])))))));
-	});
-var $author$project$Main$dataDropdown = A6(
-	$author$project$Main$genericDropdown,
-	$author$project$Main$dataPlaceholder,
-	'Data',
-	function ($) {
-		return $.dataDropState;
-	},
-	$author$project$Main$DataDropMsg,
-	$author$project$Main$dataButtonToggle,
-	$author$project$Main$dropdownData);
+										$elm$html$Html$text(config.label)
+									]))
+							]))
+					]),
+				$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$small(
+					$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$config(
+						$rundis$elm_bootstrap$Bootstrap$Form$InputGroup$text(
+							_List_fromArray(
+								[
+									$rundis$elm_bootstrap$Bootstrap$Form$Input$placeholder(config.placeholder),
+									$rundis$elm_bootstrap$Bootstrap$Form$Input$disabled(true)
+								])))))));
+};
+var $author$project$Main$dataDropdown = A2($elm$core$Basics$composeR, $author$project$Main$dataDropdownConfig, $author$project$Dropdown$genericDropdown);
 var $rundis$elm_bootstrap$Bootstrap$Modal$Footer = function (a) {
 	return {$: 'Footer', a: a};
 };
@@ -16829,12 +16385,7 @@ var $rundis$elm_bootstrap$Bootstrap$Button$disabled = function (disabled_) {
 	return $rundis$elm_bootstrap$Bootstrap$Internal$Button$Disabled(disabled_);
 };
 var $author$project$Main$noSelectedVar = function (model) {
-	var _v0 = model.selected;
-	if (_v0.$ === 'Nothing') {
-		return true;
-	} else {
-		return false;
-	}
+	return $elm_community$maybe_extra$Maybe$Extra$isNothing(model.selected);
 };
 var $author$project$Main$successButtonToggle = function (model) {
 	var attr = _List_fromArray(
@@ -16855,17 +16406,44 @@ var $author$project$Main$successPlaceholder = function (model) {
 		return s.successLbl;
 	}
 };
-var $author$project$Main$successDropdown = A6(
-	$author$project$Main$genericDropdown,
-	$author$project$Main$successPlaceholder,
-	'Success',
-	function ($) {
-		return $.successDropState;
-	},
-	$author$project$Main$SuccessDropMsg,
-	$author$project$Main$successButtonToggle,
-	$author$project$Main$dropdownSuccess);
+var $author$project$Main$successDropdownConfig = function (model) {
+	return {
+		button: $author$project$Main$successButtonToggle(model),
+		items: $author$project$Main$dropdownSuccess(model),
+		label: 'Success',
+		placeholder: $author$project$Main$successPlaceholder(model),
+		state: model.successDropState,
+		toggle: $author$project$Main$SuccessDropMsg
+	};
+};
+var $author$project$Main$successDropdown = A2($elm$core$Basics$composeR, $author$project$Main$successDropdownConfig, $author$project$Dropdown$genericDropdown);
 var $author$project$Main$ShowModal = {$: 'ShowModal'};
+var $elm$virtual_dom$VirtualDom$MayPreventDefault = function (a) {
+	return {$: 'MayPreventDefault', a: a};
+};
+var $elm$html$Html$Events$preventDefaultOn = F2(
+	function (event, decoder) {
+		return A2(
+			$elm$virtual_dom$VirtualDom$on,
+			event,
+			$elm$virtual_dom$VirtualDom$MayPreventDefault(decoder));
+	});
+var $rundis$elm_bootstrap$Bootstrap$Button$onClick = function (message) {
+	return $rundis$elm_bootstrap$Bootstrap$Button$attrs(
+		_List_fromArray(
+			[
+				A2(
+				$elm$html$Html$Events$preventDefaultOn,
+				'click',
+				$elm$json$Json$Decode$succeed(
+					_Utils_Tuple2(message, true)))
+			]));
+};
+var $rundis$elm_bootstrap$Bootstrap$Internal$Button$Roled = function (a) {
+	return {$: 'Roled', a: a};
+};
+var $rundis$elm_bootstrap$Bootstrap$Button$primary = $rundis$elm_bootstrap$Bootstrap$Internal$Button$Coloring(
+	$rundis$elm_bootstrap$Bootstrap$Internal$Button$Roled($rundis$elm_bootstrap$Bootstrap$Internal$Button$Primary));
 var $author$project$Main$genericButton = F5(
 	function (isDisabled, attrs, onclick, lbl, model) {
 		return A2(
@@ -16894,6 +16472,18 @@ var $author$project$Main$uploadButton = A4(
 		[$rundis$elm_bootstrap$Bootstrap$Utilities$Spacing$ml1]),
 	$author$project$Main$ShowModal,
 	'Upload CSV');
+var $rundis$elm_bootstrap$Bootstrap$Grid$container = F2(
+	function (attributes, children) {
+		return A2(
+			$elm$html$Html$div,
+			_Utils_ap(
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('container')
+					]),
+				attributes),
+			children);
+	});
 var $elm$html$Html$form = _VirtualDom_node('form');
 var $rundis$elm_bootstrap$Bootstrap$Form$form = F2(
 	function (attributes, children) {
@@ -16913,6 +16503,7 @@ var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$ColAttrs = function (a) {
 var $rundis$elm_bootstrap$Bootstrap$Grid$Col$attrs = function (attrs_) {
 	return $rundis$elm_bootstrap$Bootstrap$Grid$Internal$ColAttrs(attrs_);
 };
+var $elm$html$Html$label = _VirtualDom_node('label');
 var $rundis$elm_bootstrap$Bootstrap$Form$colLabel = F2(
 	function (options, children) {
 		return $rundis$elm_bootstrap$Bootstrap$Form$Col(
@@ -17144,7 +16735,7 @@ var $author$project$Main$genericSelect = F5(
 			items(model));
 	});
 var $author$project$Main$notFrequency = function (model) {
-	return !_Utils_eq(model.fileType, $author$project$Main$Frequency);
+	return !_Utils_eq(model.fileType, $author$project$ReadCSV$Frequency);
 };
 var $rundis$elm_bootstrap$Bootstrap$Form$Select$Item = function (a) {
 	return {$: 'Item', a: a};
@@ -17168,30 +16759,27 @@ var $author$project$Main$variableItem = function (lbl) {
 			]));
 };
 var $author$project$Main$variableItems = function (model) {
-	var varItems = function () {
-		var _v0 = model.variables;
-		if (_v0.$ === 'Nothing') {
-			return _List_Nil;
-		} else {
-			var el = _v0.a;
-			var varNames = A2($elm$core$List$map, $elm$core$Tuple$first, el);
-			return A2($elm$core$List$map, $author$project$Main$variableItem, varNames);
-		}
-	}();
-	var baseItems = _List_fromArray(
-		[
+	return _Utils_ap(
+		_List_fromArray(
+			[
+				A2(
+				$rundis$elm_bootstrap$Bootstrap$Form$Select$item,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$value('none')
+					]),
+				_List_fromArray(
+					[
+						$elm$html$Html$text('Not Selected')
+					]))
+			]),
+		A2(
+			$elm$core$List$map,
+			$author$project$Main$variableItem,
 			A2(
-			$rundis$elm_bootstrap$Bootstrap$Form$Select$item,
-			_List_fromArray(
-				[
-					$elm$html$Html$Attributes$value('none')
-				]),
-			_List_fromArray(
-				[
-					$elm$html$Html$text('Not Selected')
-				]))
-		]);
-	return _Utils_ap(baseItems, varItems);
+				$elm$core$List$map,
+				$elm$core$Tuple$first,
+				A2($elm$core$Maybe$withDefault, _List_Nil, model.variables))));
 };
 var $author$project$Main$countSelect = A4($author$project$Main$genericSelect, 'countselect', $author$project$Main$notFrequency, $author$project$Main$SelectCount, $author$project$Main$variableItems);
 var $author$project$Main$CsvRequested = {$: 'CsvRequested'};
@@ -17248,7 +16836,7 @@ var $author$project$Main$noFileName = function (model) {
 var $author$project$Main$fileTypeSelect = A4($author$project$Main$genericSelect, 'fileselect', $author$project$Main$noFileName, $author$project$Main$ChangeFileType, $author$project$Main$fileTypeItems);
 var $author$project$Main$LoadUserData = {$: 'LoadUserData'};
 var $author$project$Main$noPerspectiveData = function (model) {
-	return _Utils_eq(model.perspectiveData, $elm$core$Maybe$Nothing);
+	return $elm_community$maybe_extra$Maybe$Extra$isNothing(model.perspectiveData);
 };
 var $author$project$Main$loadFileButton = A4(
 	$author$project$Main$genericButton,
@@ -17845,46 +17433,47 @@ var $rundis$elm_bootstrap$Bootstrap$Table$th = F2(
 		return $rundis$elm_bootstrap$Bootstrap$Table$Th(
 			{children: children, options: options});
 	});
+var $author$project$Main$dataTable = function (data) {
+	return $rundis$elm_bootstrap$Bootstrap$Table$table(
+		{
+			options: _List_fromArray(
+				[$rundis$elm_bootstrap$Bootstrap$Table$small, $rundis$elm_bootstrap$Bootstrap$Table$striped, $rundis$elm_bootstrap$Bootstrap$Table$bordered]),
+			tbody: A2(
+				$rundis$elm_bootstrap$Bootstrap$Table$tbody,
+				_List_Nil,
+				A2($elm$core$List$map, $author$project$Main$makeTableRow, data.frequencies)),
+			thead: $rundis$elm_bootstrap$Bootstrap$Table$simpleThead(
+				_List_fromArray(
+					[
+						A2(
+						$rundis$elm_bootstrap$Bootstrap$Table$th,
+						_List_Nil,
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Label')
+							])),
+						A2(
+						$rundis$elm_bootstrap$Bootstrap$Table$th,
+						_List_Nil,
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Count')
+							]))
+					]))
+		});
+};
 var $author$project$Main$previewTable = function (model) {
-	var _v0 = model.perspectiveData;
-	if (_v0.$ === 'Nothing') {
-		return A2($elm$html$Html$div, _List_Nil, _List_Nil);
-	} else {
-		var data = _v0.a;
-		return $rundis$elm_bootstrap$Bootstrap$Table$table(
-			{
-				options: _List_fromArray(
-					[$rundis$elm_bootstrap$Bootstrap$Table$small, $rundis$elm_bootstrap$Bootstrap$Table$striped, $rundis$elm_bootstrap$Bootstrap$Table$bordered]),
-				tbody: A2(
-					$rundis$elm_bootstrap$Bootstrap$Table$tbody,
-					_List_Nil,
-					A2($elm$core$List$map, $author$project$Main$makeTableRow, data.frequencies)),
-				thead: $rundis$elm_bootstrap$Bootstrap$Table$simpleThead(
-					_List_fromArray(
-						[
-							A2(
-							$rundis$elm_bootstrap$Bootstrap$Table$th,
-							_List_Nil,
-							_List_fromArray(
-								[
-									$elm$html$Html$text('Label')
-								])),
-							A2(
-							$rundis$elm_bootstrap$Bootstrap$Table$th,
-							_List_Nil,
-							_List_fromArray(
-								[
-									$elm$html$Html$text('Count')
-								]))
-						]))
-			});
-	}
+	return A3(
+		$elm_community$maybe_extra$Maybe$Extra$unwrap,
+		A2($elm$html$Html$div, _List_Nil, _List_Nil),
+		$author$project$Main$dataTable,
+		model.perspectiveData);
 };
 var $author$project$Main$SelectVariable = function (a) {
 	return {$: 'SelectVariable', a: a};
 };
 var $author$project$Main$noTypeSelected = function (model) {
-	return _Utils_eq(model.fileType, $author$project$Main$NoType);
+	return _Utils_eq(model.fileType, $author$project$ReadCSV$NoType);
 };
 var $author$project$Main$variableSelect = A4($author$project$Main$genericSelect, 'varselect', $author$project$Main$noTypeSelected, $author$project$Main$SelectVariable, $author$project$Main$variableItems);
 var $author$project$Main$uploadRowsRaw = _List_fromArray(
@@ -17919,6 +17508,14 @@ var $author$project$Main$uploadForm = function (model) {
 					funcs))
 			]));
 };
+var $elm$virtual_dom$VirtualDom$attribute = F2(
+	function (key, value) {
+		return A2(
+			_VirtualDom_attribute,
+			_VirtualDom_noOnOrFormAction(key),
+			_VirtualDom_noJavaScriptOrHtmlUri(value));
+	});
+var $elm$html$Html$Attributes$attribute = $elm$virtual_dom$VirtualDom$attribute;
 var $rundis$elm_bootstrap$Bootstrap$Modal$StartClose = {$: 'StartClose'};
 var $rundis$elm_bootstrap$Bootstrap$Modal$getCloseMsg = function (config_) {
 	var _v0 = config_.withAnimation;
@@ -18314,6 +17911,7 @@ var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col12 = {$: 'Col12'};
 var $rundis$elm_bootstrap$Bootstrap$General$Internal$MD = {$: 'MD'};
 var $rundis$elm_bootstrap$Bootstrap$Grid$Col$md12 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$MD, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col12);
 var $rundis$elm_bootstrap$Bootstrap$Grid$Col$md4 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$MD, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col4);
+var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col8 = {$: 'Col8'};
 var $rundis$elm_bootstrap$Bootstrap$Grid$Col$md8 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$MD, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col8);
 var $elm$html$Html$Attributes$href = function (url) {
 	return A2(
@@ -18336,8 +17934,8 @@ var $rundis$elm_bootstrap$Bootstrap$CDN$stylesheet = A3(
 			$elm$html$Html$Attributes$href('https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css')
 		]),
 	_List_Nil);
-var $author$project$Main$mainGrid = F7(
-	function (dataEntry, originalSample, bootstrapSample, collectButtons, distPlot, confLimits, debug) {
+var $author$project$Main$mainGrid = F8(
+	function (dataEntry, originalSample, bootstrapSample, collectButtons, distPlot, confLimits, distSummary, debug) {
 		return A2(
 			$elm$html$Html$div,
 			_List_Nil,
@@ -18412,6 +18010,8 @@ var $author$project$Main$mainGrid = F7(
 												[
 													collectButtons,
 													A2($elm$html$Html$br, _List_Nil, _List_Nil),
+													distSummary,
+													A2($elm$html$Html$br, _List_Nil, _List_Nil),
 													confLimits
 												]))
 										])),
@@ -18442,27 +18042,688 @@ var $author$project$Main$mainGrid = F7(
 						]))
 				]));
 	});
-var $author$project$Main$originalSampleView = A3(
-	$author$project$Main$sampleGrid,
+var $author$project$Main$Collect = function (a) {
+	return {$: 'Collect', a: a};
+};
+var $author$project$Main$Reset = {$: 'Reset'};
+var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$Attrs = function (a) {
+	return {$: 'Attrs', a: a};
+};
+var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$attrs = function (attrs_) {
+	return $rundis$elm_bootstrap$Bootstrap$ButtonGroup$Attrs(attrs_);
+};
+var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$GroupItem = function (a) {
+	return {$: 'GroupItem', a: a};
+};
+var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$applyModifier = F2(
+	function (modifier, options) {
+		switch (modifier.$) {
+			case 'Size':
+				var size = modifier.a;
+				return _Utils_update(
+					options,
+					{
+						size: $elm$core$Maybe$Just(size)
+					});
+			case 'Vertical':
+				return _Utils_update(
+					options,
+					{vertical: true});
+			default:
+				var attrs_ = modifier.a;
+				return _Utils_update(
+					options,
+					{
+						attributes: _Utils_ap(options.attributes, attrs_)
+					});
+		}
+	});
+var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$defaultOptions = {attributes: _List_Nil, size: $elm$core$Maybe$Nothing, vertical: false};
+var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$groupAttributes = F2(
+	function (toggle, modifiers) {
+		var options = A3($elm$core$List$foldl, $rundis$elm_bootstrap$Bootstrap$ButtonGroup$applyModifier, $rundis$elm_bootstrap$Bootstrap$ButtonGroup$defaultOptions, modifiers);
+		return _Utils_ap(
+			_List_fromArray(
+				[
+					A2($elm$html$Html$Attributes$attribute, 'role', 'group'),
+					$elm$html$Html$Attributes$classList(
+					_List_fromArray(
+						[
+							_Utils_Tuple2('btn-group', true),
+							_Utils_Tuple2('btn-group-toggle', toggle),
+							_Utils_Tuple2('btn-group-vertical', options.vertical)
+						])),
+					A2($elm$html$Html$Attributes$attribute, 'data-toggle', 'buttons')
+				]),
+			_Utils_ap(
+				function () {
+					var _v0 = A2($elm$core$Maybe$andThen, $rundis$elm_bootstrap$Bootstrap$General$Internal$screenSizeOption, options.size);
+					if (_v0.$ === 'Just') {
+						var s = _v0.a;
+						return _List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('btn-group-' + s)
+							]);
+					} else {
+						return _List_Nil;
+					}
+				}(),
+				options.attributes));
+	});
+var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$buttonGroupItem = F2(
+	function (options, items) {
+		return $rundis$elm_bootstrap$Bootstrap$ButtonGroup$GroupItem(
+			A2(
+				$elm$html$Html$div,
+				A2($rundis$elm_bootstrap$Bootstrap$ButtonGroup$groupAttributes, false, options),
+				A2(
+					$elm$core$List$map,
+					function (_v0) {
+						var elem = _v0.a;
+						return elem;
+					},
+					items)));
+	});
+var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$renderGroup = function (_v0) {
+	var elem = _v0.a;
+	return elem;
+};
+var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$buttonGroup = F2(
+	function (options, items) {
+		return $rundis$elm_bootstrap$Bootstrap$ButtonGroup$renderGroup(
+			A2($rundis$elm_bootstrap$Bootstrap$ButtonGroup$buttonGroupItem, options, items));
+	});
+var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$ButtonItem = function (a) {
+	return {$: 'ButtonItem', a: a};
+};
+var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$button = F2(
+	function (options, children) {
+		return $rundis$elm_bootstrap$Bootstrap$ButtonGroup$ButtonItem(
+			A2($rundis$elm_bootstrap$Bootstrap$Button$button, options, children));
+	});
+var $author$project$Display$changeThousandsToK = function (n) {
+	var zeros = $elm$core$Basics$round(
+		A2($elm$core$Basics$logBase, 10, n));
+	return (zeros < 3) ? $elm$core$String$fromInt(n) : ($elm$core$String$fromInt(
+		A2($elm$core$Basics$pow, 10, zeros - 3)) + 'K');
+};
+var $author$project$CollectButtons$collectButton = F2(
+	function (toOnClick, n) {
+		return A2(
+			$rundis$elm_bootstrap$Bootstrap$ButtonGroup$button,
+			_List_fromArray(
+				[
+					$rundis$elm_bootstrap$Bootstrap$Button$primary,
+					$rundis$elm_bootstrap$Bootstrap$Button$onClick(
+					toOnClick(n))
+				]),
+			_List_fromArray(
+				[
+					$elm$html$Html$text(
+					$author$project$Display$changeThousandsToK(n))
+				]));
+	});
+var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$Size = function (a) {
+	return {$: 'Size', a: a};
+};
+var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$small = $rundis$elm_bootstrap$Bootstrap$ButtonGroup$Size($rundis$elm_bootstrap$Bootstrap$General$Internal$SM);
+var $author$project$CollectButtons$collectButtons = F2(
+	function (toOnClick, ns) {
+		return A2(
+			$elm$html$Html$div,
+			_List_Nil,
+			_List_fromArray(
+				[
+					A2(
+					$rundis$elm_bootstrap$Bootstrap$ButtonGroup$buttonGroup,
+					_List_fromArray(
+						[
+							$rundis$elm_bootstrap$Bootstrap$ButtonGroup$small,
+							$rundis$elm_bootstrap$Bootstrap$ButtonGroup$attrs(
+							_List_fromArray(
+								[
+									A2($elm$html$Html$Attributes$style, 'display', 'block'),
+									A2($elm$html$Html$Attributes$style, 'padding-right', '1px'),
+									A2($elm$html$Html$Attributes$style, 'padding-left', '1px')
+								]))
+						]),
+					A2(
+						$elm$core$List$map,
+						$author$project$CollectButtons$collectButton(toOnClick),
+						ns))
+				]));
+	});
+var $pd_andy$tuple_extra$Tuple$Extra$apply = F2(
+	function (f, _v0) {
+		var a = _v0.a;
+		var b = _v0.b;
+		return A2(f, a, b);
+	});
+var $rundis$elm_bootstrap$Bootstrap$Grid$ColBreak = function (a) {
+	return {$: 'ColBreak', a: a};
+};
+var $rundis$elm_bootstrap$Bootstrap$Grid$colBreak = function (attributes) {
+	return $rundis$elm_bootstrap$Bootstrap$Grid$ColBreak(
+		A2(
+			$elm$html$Html$div,
+			_Utils_ap(
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('w-100')
+					]),
+				attributes),
+			_List_Nil));
+};
+var $author$project$Main$formRow = F4(
+	function (left, right, lbl, content) {
+		return _List_fromArray(
+			[
+				A2(
+				$rundis$elm_bootstrap$Bootstrap$Grid$col,
+				_List_fromArray(
+					[left]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$b,
+						_List_Nil,
+						_List_fromArray(
+							[
+								$elm$html$Html$text(lbl)
+							]))
+					])),
+				A2(
+				$rundis$elm_bootstrap$Bootstrap$Grid$col,
+				_List_fromArray(
+					[right]),
+				_List_fromArray(
+					[content])),
+				$rundis$elm_bootstrap$Bootstrap$Grid$colBreak(_List_Nil)
+			]);
+	});
+var $author$project$Main$formRows = F3(
+	function (left, right, comps) {
+		return A3(
+			$elm$core$List$foldr,
+			$elm$core$Basics$append,
+			_List_Nil,
+			A2(
+				$elm$core$List$map,
+				$pd_andy$tuple_extra$Tuple$Extra$apply(
+					A2($author$project$Main$formRow, left, right)),
+				comps));
+	});
+var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col9 = {$: 'Col9'};
+var $rundis$elm_bootstrap$Bootstrap$Grid$Col$xs9 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$XS, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col9);
+var $author$project$Main$formGroup = F4(
+	function (left, right, title, components) {
+		return A2(
+			$elm$html$Html$div,
+			_List_Nil,
+			_List_fromArray(
+				[
+					A2(
+					$rundis$elm_bootstrap$Bootstrap$Form$group,
+					_List_Nil,
+					_List_fromArray(
+						[
+							A2(
+							$rundis$elm_bootstrap$Bootstrap$Grid$row,
+							_List_Nil,
+							_List_fromArray(
+								[
+									A2(
+									$rundis$elm_bootstrap$Bootstrap$Grid$col,
+									_List_fromArray(
+										[$rundis$elm_bootstrap$Bootstrap$Grid$Col$xs9]),
+									_List_fromArray(
+										[
+											A2(
+											$elm$html$Html$h4,
+											_List_Nil,
+											_List_fromArray(
+												[
+													$elm$html$Html$text(title)
+												])),
+											A2(
+											$elm$html$Html$div,
+											_List_Nil,
+											_List_fromArray(
+												[
+													A2(
+													$rundis$elm_bootstrap$Bootstrap$Grid$container,
+													_List_Nil,
+													_List_fromArray(
+														[
+															A2(
+															$rundis$elm_bootstrap$Bootstrap$Grid$row,
+															_List_Nil,
+															A3($author$project$Main$formRows, left, right, components))
+														]))
+												]))
+										]))
+								]))
+						]))
+				]));
+	});
+var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col1 = {$: 'Col1'};
+var $rundis$elm_bootstrap$Bootstrap$Grid$Col$sm1 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$SM, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col1);
+var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col11 = {$: 'Col11'};
+var $rundis$elm_bootstrap$Bootstrap$Grid$Col$sm11 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$SM, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col11);
+var $author$project$Main$collectGrid = F3(
+	function (buttons, numCollected, resetButton) {
+		var components = _List_fromArray(
+			[
+				_Utils_Tuple2('', buttons),
+				_Utils_Tuple2('', resetButton)
+			]);
+		return A4($author$project$Main$formGroup, $rundis$elm_bootstrap$Bootstrap$Grid$Col$sm1, $rundis$elm_bootstrap$Bootstrap$Grid$Col$sm11, 'Collect Statistics', components);
+	});
+var $author$project$CollectButtons$resetButton = function (onClickMsg) {
+	return A2(
+		$rundis$elm_bootstrap$Bootstrap$Button$button,
+		_List_fromArray(
+			[
+				$rundis$elm_bootstrap$Bootstrap$Button$primary,
+				$rundis$elm_bootstrap$Bootstrap$Button$onClick(onClickMsg),
+				$rundis$elm_bootstrap$Bootstrap$Button$small
+			]),
+		_List_fromArray(
+			[
+				$elm$html$Html$text('Reset')
+			]));
+};
+var $elm$core$String$right = F2(
+	function (n, string) {
+		return (n < 1) ? '' : A3(
+			$elm$core$String$slice,
+			-n,
+			$elm$core$String$length(string),
+			string);
+	});
+var $author$project$Display$pullOffThree = function (s) {
+	var n = $elm$core$String$length(s);
+	return (!n) ? $elm$core$Maybe$Nothing : ((n >= 3) ? $elm$core$Maybe$Just(
+		_Utils_Tuple2(
+			A2($elm$core$String$right, 3, s),
+			A2($elm$core$String$left, n - 3, s))) : $elm$core$Maybe$Just(
+		_Utils_Tuple2(s, '')));
+};
+var $elm_community$list_extra$List$Extra$unfoldr = F2(
+	function (f, seed) {
+		var _v0 = f(seed);
+		if (_v0.$ === 'Nothing') {
+			return _List_Nil;
+		} else {
+			var _v1 = _v0.a;
+			var a = _v1.a;
+			var b = _v1.b;
+			return A2(
+				$elm$core$List$cons,
+				a,
+				A2($elm_community$list_extra$List$Extra$unfoldr, f, b));
+		}
+	});
+var $author$project$Display$stringAndAddCommas = function (n) {
+	return A2(
+		$elm$core$String$join,
+		',',
+		$elm$core$List$reverse(
+			A2(
+				$elm_community$list_extra$List$Extra$unfoldr,
+				$author$project$Display$pullOffThree,
+				$elm$core$String$fromInt(n))));
+};
+var $author$project$CollectButtons$totalCollectedTxt = function (numTrials) {
+	return $elm$html$Html$text(
+		$author$project$Display$stringAndAddCommas(numTrials) + ' statistics collected');
+};
+var $author$project$Main$collectView = function (model) {
+	return A3(
+		$author$project$Main$collectGrid,
+		A2($author$project$CollectButtons$collectButtons, $author$project$Main$Collect, $author$project$Defaults$defaults.collectNs),
+		$author$project$CollectButtons$totalCollectedTxt(model.trials),
+		$author$project$CollectButtons$resetButton($author$project$Main$Reset));
+};
+var $author$project$Main$maybeShowControls = F2(
+	function (v, model) {
+		return $elm_community$maybe_extra$Maybe$Extra$isNothing(model.originalSample) ? A2($elm$html$Html$div, _List_Nil, _List_Nil) : v(model);
+	});
+var $author$project$Main$maybeCollectView = $author$project$Main$maybeShowControls($author$project$Main$collectView);
+var $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col3 = {$: 'Col3'};
+var $rundis$elm_bootstrap$Bootstrap$Grid$Col$sm3 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$SM, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col3);
+var $rundis$elm_bootstrap$Bootstrap$Grid$Col$sm9 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$SM, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col9);
+var $author$project$Main$confLimitsGrid = F2(
+	function (levelButtons, output) {
+		var components = _List_fromArray(
+			[
+				_Utils_Tuple2('Level', levelButtons),
+				_Utils_Tuple2('Result', output)
+			]);
+		return A4($author$project$Main$formGroup, $rundis$elm_bootstrap$Bootstrap$Grid$Col$sm3, $rundis$elm_bootstrap$Bootstrap$Grid$Col$sm9, 'Confidence Interval', components);
+	});
+var $author$project$Main$ChangeLevel = function (a) {
+	return {$: 'ChangeLevel', a: a};
+};
+var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$RadioButtonItem = function (a) {
+	return {$: 'RadioButtonItem', a: a};
+};
+var $elm$html$Html$Attributes$autocomplete = function (bool) {
+	return A2(
+		$elm$html$Html$Attributes$stringProperty,
+		'autocomplete',
+		bool ? 'on' : 'off');
+};
+var $elm$html$Html$Attributes$checked = $elm$html$Html$Attributes$boolProperty('checked');
+var $rundis$elm_bootstrap$Bootstrap$Button$radioButton = F3(
+	function (checked, options, children) {
+		var hideRadio = A2($elm$html$Html$Attributes$attribute, 'data-toggle', 'button');
+		return A2(
+			$elm$html$Html$label,
+			A2(
+				$elm$core$List$cons,
+				$elm$html$Html$Attributes$classList(
+					_List_fromArray(
+						[
+							_Utils_Tuple2('active', checked)
+						])),
+				A2(
+					$elm$core$List$cons,
+					hideRadio,
+					$rundis$elm_bootstrap$Bootstrap$Internal$Button$buttonAttributes(options))),
+			A2(
+				$elm$core$List$cons,
+				A2(
+					$elm$html$Html$input,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$type_('radio'),
+							$elm$html$Html$Attributes$checked(checked),
+							$elm$html$Html$Attributes$autocomplete(false)
+						]),
+					_List_Nil),
+				children));
+	});
+var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$radioButton = F3(
+	function (checked, options, children) {
+		return $rundis$elm_bootstrap$Bootstrap$ButtonGroup$RadioButtonItem(
+			A3($rundis$elm_bootstrap$Bootstrap$Button$radioButton, checked, options, children));
+	});
+var $author$project$Main$makeLevelButton = F3(
+	function (model, conf, txt) {
+		return A3(
+			$rundis$elm_bootstrap$Bootstrap$ButtonGroup$radioButton,
+			function () {
+				var _v0 = model.level;
+				if (_v0.$ === 'Nothing') {
+					return false;
+				} else {
+					var lvl = _v0.a;
+					return _Utils_eq(lvl, conf);
+				}
+			}(),
+			_List_fromArray(
+				[
+					$rundis$elm_bootstrap$Bootstrap$Button$primary,
+					$rundis$elm_bootstrap$Bootstrap$Button$small,
+					$rundis$elm_bootstrap$Bootstrap$Button$onClick(
+					$author$project$Main$ChangeLevel(conf))
+				]),
+			_List_fromArray(
+				[
+					$elm$html$Html$text(txt)
+				]));
+	});
+var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$radioButtonGroupItem = F2(
+	function (options, items) {
+		return $rundis$elm_bootstrap$Bootstrap$ButtonGroup$GroupItem(
+			A2(
+				$elm$html$Html$div,
+				A2($rundis$elm_bootstrap$Bootstrap$ButtonGroup$groupAttributes, true, options),
+				A2(
+					$elm$core$List$map,
+					function (_v0) {
+						var elem = _v0.a;
+						return elem;
+					},
+					items)));
+	});
+var $rundis$elm_bootstrap$Bootstrap$ButtonGroup$radioButtonGroup = F2(
+	function (options, items) {
+		return $rundis$elm_bootstrap$Bootstrap$ButtonGroup$renderGroup(
+			A2($rundis$elm_bootstrap$Bootstrap$ButtonGroup$radioButtonGroupItem, options, items));
+	});
+var $author$project$Main$levelButtonView = function (model) {
+	return A2(
+		$rundis$elm_bootstrap$Bootstrap$ButtonGroup$radioButtonGroup,
+		_List_Nil,
+		A3(
+			$elm$core$List$map2,
+			$author$project$Main$makeLevelButton(model),
+			$author$project$Defaults$defaults.levels,
+			$author$project$Defaults$defaults.levelsTxt));
+};
+var $elm$core$String$dropRight = F2(
+	function (n, string) {
+		return (n < 1) ? string : A3($elm$core$String$slice, 0, -n, string);
+	});
+var $lukewestby$elm_string_interpolate$String$Interpolate$applyInterpolation = F2(
+	function (replacements, _v0) {
+		var match = _v0.match;
+		var ordinalString = A2(
+			$elm$core$Basics$composeL,
+			$elm$core$String$dropLeft(1),
+			$elm$core$String$dropRight(1))(match);
+		return A2(
+			$elm$core$Maybe$withDefault,
+			'',
+			A2(
+				$elm$core$Maybe$andThen,
+				function (value) {
+					return A2($elm$core$Array$get, value, replacements);
+				},
+				$elm$core$String$toInt(ordinalString)));
+	});
+var $elm$regex$Regex$Match = F4(
+	function (match, index, number, submatches) {
+		return {index: index, match: match, number: number, submatches: submatches};
+	});
+var $elm$regex$Regex$fromStringWith = _Regex_fromStringWith;
+var $elm$regex$Regex$fromString = function (string) {
+	return A2(
+		$elm$regex$Regex$fromStringWith,
+		{caseInsensitive: false, multiline: false},
+		string);
+};
+var $elm$regex$Regex$never = _Regex_never;
+var $lukewestby$elm_string_interpolate$String$Interpolate$interpolationRegex = A2(
+	$elm$core$Maybe$withDefault,
+	$elm$regex$Regex$never,
+	$elm$regex$Regex$fromString('\\{\\d+\\}'));
+var $elm$regex$Regex$replace = _Regex_replaceAtMost(_Regex_infinity);
+var $lukewestby$elm_string_interpolate$String$Interpolate$interpolate = F2(
+	function (string, args) {
+		var asArray = $elm$core$Array$fromList(args);
+		return A3(
+			$elm$regex$Regex$replace,
+			$lukewestby$elm_string_interpolate$String$Interpolate$interpolationRegex,
+			$lukewestby$elm_string_interpolate$String$Interpolate$applyInterpolation(asArray),
+			string);
+	});
+var $author$project$Limits$confIntOutput = function (tailLimit) {
+	switch (tailLimit.$) {
+		case 'NoBounds':
+			return '??';
+		case 'Lower':
+			var l = tailLimit.a;
+			return A2(
+				$lukewestby$elm_string_interpolate$String$Interpolate$interpolate,
+				'p > {0}',
+				_List_fromArray(
+					[
+						$elm$core$String$fromFloat(
+						A2($author$project$Binomial$roundFloat, 4, l))
+					]));
+		case 'Upper':
+			var u = tailLimit.a;
+			return A2(
+				$lukewestby$elm_string_interpolate$String$Interpolate$interpolate,
+				'p < {0}',
+				_List_fromArray(
+					[
+						$elm$core$String$fromFloat(
+						A2($author$project$Binomial$roundFloat, 4, u))
+					]));
+		default:
+			var l = tailLimit.a;
+			var u = tailLimit.b;
+			return A2(
+				$lukewestby$elm_string_interpolate$String$Interpolate$interpolate,
+				'{0} < p < {1}',
+				_List_fromArray(
+					[
+						$elm$core$String$fromFloat(
+						A2($author$project$Binomial$roundFloat, 4, l)),
+						$elm$core$String$fromFloat(
+						A2($author$project$Binomial$roundFloat, 4, u))
+					]));
+	}
+};
+var $author$project$Main$outputText = A2(
+	$elm$core$Basics$composeR,
 	function ($) {
-		return $.originalSample;
+		return $.tailLimit;
 	},
-	'Original Sample',
-	'samplePlot');
+	$author$project$Limits$confIntOutput);
+var $author$project$Main$confLimitsView = function (model) {
+	return A2(
+		$author$project$Main$confLimitsGrid,
+		$author$project$Main$levelButtonView(model),
+		$elm$html$Html$text(
+			$author$project$Main$outputText(model)));
+};
+var $author$project$Main$maybeConfIntView = $author$project$Main$maybeShowControls($author$project$Main$confLimitsView);
+var $rundis$elm_bootstrap$Bootstrap$Grid$Col$sm8 = A2($rundis$elm_bootstrap$Bootstrap$Grid$Internal$width, $rundis$elm_bootstrap$Bootstrap$General$Internal$SM, $rundis$elm_bootstrap$Bootstrap$Grid$Internal$Col8);
+var $author$project$Main$distSummaryGrid = F3(
+	function (mean, sd, nSamples) {
+		var components = _List_fromArray(
+			[
+				_Utils_Tuple2('Mean', mean),
+				_Utils_Tuple2('SE', sd),
+				_Utils_Tuple2('Samples', nSamples)
+			]);
+		return A4($author$project$Main$formGroup, $rundis$elm_bootstrap$Bootstrap$Grid$Col$sm4, $rundis$elm_bootstrap$Bootstrap$Grid$Col$sm8, 'Bootstrap Distribution', components);
+	});
+var $author$project$Main$leverage = F4(
+	function (trials, n, val, cnt) {
+		var prop = val / n;
+		var frac = cnt / trials;
+		return prop * frac;
+	});
+var $author$project$Main$leverages = F3(
+	function (trials, countDict, n) {
+		return A2(
+			$author$project$Binomial$roundFloat,
+			3,
+			A3(
+				$elm$core$List$foldl,
+				$elm$core$Basics$add,
+				0,
+				A2(
+					$elm$core$List$map,
+					$pd_andy$tuple_extra$Tuple$Extra$apply(
+						A2($author$project$Main$leverage, trials, n)),
+					$elm$core$Dict$toList(countDict))));
+	});
+var $author$project$Main$divideBy = F2(
+	function (denom, numer) {
+		return numer / denom;
+	});
+var $elm$core$Tuple$mapFirst = F2(
+	function (func, _v0) {
+		var x = _v0.a;
+		var y = _v0.b;
+		return _Utils_Tuple2(
+			func(x),
+			y);
+	});
+var $author$project$Main$residSqr = F2(
+	function (mean, x) {
+		return A2($elm$core$Basics$pow, x - mean, 2);
+	});
+var $elm$core$Basics$sqrt = _Basics_sqrt;
+var $author$project$Main$standDev = F4(
+	function (trials, countDict, mean, sample) {
+		return A2(
+			$author$project$Binomial$roundFloat,
+			3,
+			$elm$core$Basics$sqrt(
+				A3(
+					$elm$core$List$foldl,
+					$elm$core$Basics$add,
+					0,
+					A2(
+						$elm$core$List$map,
+						$pd_andy$tuple_extra$Tuple$Extra$apply($elm$core$Basics$mul),
+						A2(
+							$elm$core$List$map,
+							$elm$core$Tuple$mapSecond(
+								$author$project$Main$divideBy(trials - 1)),
+							A2(
+								$elm$core$List$map,
+								$elm$core$Tuple$mapFirst(
+									A2(
+										$elm$core$Basics$composeR,
+										$author$project$Main$divideBy(sample.n),
+										$author$project$Main$residSqr(mean))),
+								$elm$core$Dict$toList(countDict)))))));
+	});
+var $author$project$Main$distSummaryView = function (model) {
+	var nSamples = $elm$html$Html$text(
+		$elm$core$String$fromInt(model.trials));
+	var mean = A2(
+		$elm$core$Maybe$map,
+		A2(
+			$elm$core$Basics$composeR,
+			function ($) {
+				return $.n;
+			},
+			A2($author$project$Main$leverages, model.trials, model.ys)),
+		model.originalSample);
+	var meanStr = $elm$html$Html$text(
+		A3($elm_community$maybe_extra$Maybe$Extra$unwrap, '??', $elm$core$String$fromFloat, mean));
+	var sD = A3(
+		$elm$core$Maybe$map2,
+		A2($author$project$Main$standDev, model.trials, model.ys),
+		mean,
+		model.originalSample);
+	var sdStr = $elm$html$Html$text(
+		A3($elm_community$maybe_extra$Maybe$Extra$unwrap, '??', $elm$core$String$fromFloat, sD));
+	return A3($author$project$Main$distSummaryGrid, meanStr, sdStr, nSamples);
+};
+var $author$project$Main$maybeDistSummaryView = $author$project$Main$maybeShowControls($author$project$Main$distSummaryView);
+var $author$project$Main$originalSampleView = function (model) {
+	return A3(
+		$author$project$Main$sampleGrid,
+		'Original Sample',
+		'samplePlot',
+		$author$project$Sample$maybeSampleView(model.originalSample));
+};
 var $author$project$Main$view = function (model) {
 	return A2(
 		$elm$html$Html$div,
 		_List_Nil,
 		_List_fromArray(
 			[
-				A7(
+				A8(
 				$author$project$Main$mainGrid,
 				$author$project$Main$dataEntryInputGroupView(model),
 				$author$project$Main$originalSampleView(model),
 				$author$project$Main$bootstrapSampleView(model),
-				$author$project$Main$collectButtonView(model),
+				$author$project$Main$maybeCollectView(model),
 				$author$project$Main$distPlotView(model),
-				$author$project$Main$confLimitsView(model),
+				$author$project$Main$maybeConfIntView(model),
+				$author$project$Main$maybeDistSummaryView(model),
 				A2($elm$html$Html$div, _List_Nil, _List_Nil))
 			]));
 };

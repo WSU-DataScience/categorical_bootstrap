@@ -1,7 +1,8 @@
 module SamplePlot exposing (..)
 
-import DataSet exposing (Sample)
+import Sample exposing (Sample)
 import VegaLite exposing (..)
+import Maybe exposing (withDefault)
 
 samplePlotConfig =  { height = 100
                     , width = 150
@@ -12,8 +13,9 @@ samplePlot : Sample -> Spec
 samplePlot sample =
     let
         n = sample.n
-        pSuccess = (toFloat sample.numSuccess)/(toFloat n)
-        pFailure = (toFloat sample.numFailures)/(toFloat n)
+        pSuccess = if sample.n == 0 then 0 else sample.p |> withDefault 0
+        pFailure = if sample.n == 0 then 0 else 1 - pSuccess
+
         xs = [sample.successLbl, sample.failureLbl]
 
         ys = [pSuccess, pFailure] 
@@ -34,9 +36,6 @@ samplePlot sample =
                               , pScale [ scDomain (doNums [ 0, 1 ]) ]
                               ]
                 << color [ mName "Outcome", mMType Nominal, mLegend []]
-                -- << tooltips [ [ tName "Outcome", tMType Nominal]
-                --               , [ tName "Frequency", tMType Quantitative]
-                --               ]
         cfg =
                configure
                    << configuration

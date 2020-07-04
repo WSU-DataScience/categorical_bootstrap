@@ -2,38 +2,41 @@ port module Main exposing (..)
 
 import Browser
 import Task
-import Debug
 import Random
-import Binomial exposing (getBinomGen, roundFloat)
 import CollectButtons exposing (collectButtons, totalCollectedTxt, resetButton) 
-import CountDict exposing (CountDict, updateCountDict)
-import DataSet exposing (Sample, DataSet, LabelFreq, getLabels, createDataFromRegular, createDataFromFreq, getNewData, getSuccess, updateSample, makeEmptySample)
+import CountDict exposing (CountDict, updateCountDict )
+import DataSet exposing (DataSet, LabelFreq, getLabels, createDataFromRegular, createDataFromFreq, getNewData)
+import Sample exposing (Sample, getSuccess, updateSample, makeEmptySample, maybeSampleView, updateBinomGen, sampleConfig, getLeftTailBound, getRightTailBound, getTwoTailBound)
 import Defaults exposing (defaults)
-import ReadCSV exposing (Variable, example2, getHeadTail, getVariables)
-import Limits exposing (Tail(..), TailBound, TailValue(..))
-import DistPlot exposing (DistPlotConfig, distPlot, getMaxHeight, getTailExpression, getXandY)
+import ReadCSV exposing (FileType(..), Variable, getVariables, findVariable, getFileType)
+import Limits exposing (Tail(..), TailBound, TailValue(..), confIntOutput)
+import DistPlot exposing (DistPlotConfig, distPlot)
+import Dropdown exposing (DropdownConfig, genericDropdown)
 import SamplePlot exposing (samplePlot)
+import Utility exposing (apply)
 import Dict 
 import File exposing (File, name)
 import File.Select as Select
-import Html exposing (Html, button, p, text, div, h3, h5, h4, b, br)
+import Html exposing (Html, button, text, div, h3, h5, h4, b, br)
 import Html.Attributes exposing (style, value, class, id)
 import Html.Events exposing (onClick)
-import List.Extra exposing (zip, group, last, scanl, takeWhile, dropWhileRight)
+import List.Extra exposing (group, last)
+import Binomial exposing (roundFloat)
+import Maybe exposing (withDefault)
+import Tuple.Extra exposing (pairWith, apply) -- See also pairWith for updates
+import Maybe.Extra exposing (isNothing, unwrap)
 import Bootstrap.CDN as CDN
 import Bootstrap.Grid as Grid
 import Bootstrap.Grid.Col as Col
 import Bootstrap.Button as Button
 import Bootstrap.Utilities.Spacing as Spacing
 import Bootstrap.Form as Form
-import Bootstrap.Form.Input as Input
 import Bootstrap.Form.Select as Select
-import Bootstrap.Form.InputGroup as InputGroup
 import Bootstrap.Dropdown as Dropdown
 import Bootstrap.ButtonGroup as ButtonGroup
 import Bootstrap.Modal as Modal
 import Bootstrap.Table as Table
-import VegaLite exposing (Spec, bar, circle)
+import VegaLite exposing (Spec)
 
 
 -- MAIN
@@ -50,13 +53,7 @@ main =
 
 -- MODEL
 
-type alias SampleData = { p : Float
-                        , successLbl : String
-                        , failureLbl : String
-                        , ws : List Float
-                        }
 
-type FileType = NoType | Regular | Frequency
 
 type alias Model =
     { datasets : List DataSet
@@ -79,7 +76,7 @@ type alias Model =
     , ys : CountDict
     , isProportion : Bool
     , tailLimit : TailBound
-    , tail : Tail
+    -- , tail : Tail
     , distPlotConfig : Maybe DistPlotConfig
     , level : Maybe Float
     }
@@ -106,7 +103,6 @@ initModel = { datasets = DataSet.datasets
             , ys = Dict.empty
             , isProportion = True
             , tailLimit = NoBounds
-            , tail = None
             , distPlotConfig = Nothing
             , level = Nothing
             }
@@ -138,49 +134,26 @@ type Msg
     | Collect Int
     | NewStatistics (List Float)
     | Reset
-    | ChangeTail Tail
     | ChangeLevel Float
 
 
 -- update
-
-updateBinomGen : Sample -> (Float -> Int)
-updateBinomGen sample =
-    let
-        n = sample.n
-        nF = n |> toFloat
-        successes = sample.numSuccess |> toFloat
-        p = successes / nF
-    in
-        getBinomGen n p
-    
+applyBinomGen : List Float -> Model -> (Float -> Int) -> Model
+applyBinomGen ws model gen =
+    { model | ys = updateCountDict gen model.ys ws
+            , trials = model.trials + List.length ws
+    }
 
 updateYs : List Float -> Model -> Model
 updateYs ws model =
-    let
-        (newYs, newTrials) = 
-            case model.binomGen of
-                Nothing ->
-                    (model.ys, model.trials)
-            
-                Just binomGen -> 
-                    (ws |> updateCountDict binomGen model.ys
-                    , model.trials + List.length ws
-                    )
+    model.binomGen
+    |> unwrap model (applyBinomGen ws model)
 
-    in
-        { model | ys = newYs 
-                , trials = newTrials
-                }
-
-apply : (a -> b) -> a -> b
-apply f x =
-    f x
 
 updateLast : List Float -> Model -> Model
 updateLast ws model =
   let
-    lastX = Maybe.map2 apply model.binomGen (last ws)
+    lastX = Maybe.map2 Utility.apply model.binomGen (last ws)
     newBootstrap = Maybe.map2 updateSample lastX model.bootstrapSample
   in
     { model | bootstrapSample = newBootstrap }
@@ -190,19 +163,14 @@ updateOriginal newSample model =
     { model |  originalSample = newSample }
 
 
-resetBootstrap : Maybe Sample -> Model -> Model
-resetBootstrap sample model =
-    { model |  bootstrapSample = sample |> Maybe.map makeEmptySample }
-
-
-updateBootstrap : Int -> Model -> Model
-updateBootstrap numSuccesses model =
-    { model | bootstrapSample = model.bootstrapSample |> Maybe.map (updateSample numSuccesses)}
+resetBootstrap : Model -> Model
+resetBootstrap model =
+    { model |  bootstrapSample = model.originalSample |> Maybe.map makeEmptySample }
 
 
 updateBinom : Maybe Sample -> Model -> Model
 updateBinom newSample model =
-    { model | binomGen = newSample |> Maybe.map updateBinomGen }
+    { model | binomGen = newSample |> updateBinomGen }
 
 
 resetTrials : Model -> Model
@@ -210,120 +178,26 @@ resetTrials model =
     { model | trials = 0
             , ys = Dict.empty
             , level = Nothing
-            , tail = None
             , tailLimit = NoBounds
             }
 
-sampleConfig : Model -> Sample -> DistPlotConfig
-sampleConfig model sample =
-        let
-            n = sample.n |> toFloat
-            p = (toFloat sample.numSuccess)/n
-            mean = n*p
-            tailExpr = getTailExpression mean model.tailLimit
-            isLarge = model.trials > defaults.largePlot
-            (xs, ys) = getXandY isLarge model.ys
-            smallestX = Maybe.withDefault 0 (List.minimum xs) - 3
-            largestX = Maybe.withDefault n (List.maximum xs) + 3 
-            ps = xs |> List.map (\x -> x/n)
-        in
-            { tailExpression = tailExpr
-            , xs = ps
-            , ys = ys
-            , maxY = getMaxHeight model.ys
-            , minX = Basics.max 0 (smallestX/n)
-            , maxX = Basics.min 1 (largestX/n)
-            , mark = if isLarge then bar else circle
-            , xAxisTitle = "Proportion of " ++ sample.successLbl
-            }
+updateSampleConfig : Model -> Sample -> DistPlotConfig
+updateSampleConfig model s =
+    s 
+    |> sampleConfig model.trials model.ys model.tailLimit 
 
 updateDistPlotConfig : Model -> Model
 updateDistPlotConfig model =
-    case model.originalSample of
-        Nothing ->
-            model
+   { model | distPlotConfig = model.originalSample |> Maybe.map (updateSampleConfig model) }
 
-        Just sample ->
-            { model | distPlotConfig = sample |> sampleConfig model |> Just}
-
-divideBy : Int -> Int -> Float
-divideBy denom numer =
-    (toFloat numer)/(toFloat denom) 
-
-getPercentiles : Int -> Int -> CountDict -> List (Float, Float)
-getPercentiles n trials counts =
-        counts
-        |> Dict.toList
-        |> List.map (Tuple.mapBoth (divideBy n) (divideBy trials))
-        |> \el -> zip (List.map Tuple.first el) (el |> List.map Tuple.second |> scanl (+) 0 )
-
-leftTailBound : Float -> List (Float, Float) -> Maybe Float
-leftTailBound tailArea percentiles =
-    percentiles
-    |> takeWhile (Tuple.second >> (>) tailArea)
-    |> last
-    |> Maybe.map Tuple.first
-
-rightTailBound : Float -> List (Float, Float) -> Maybe Float
-rightTailBound tailArea percentiles =
-    let
-        oneMinus = 1 - tailArea
-    in
-        percentiles
-        |> dropWhileRight (Tuple.second >> (<) oneMinus)
-        |> last
-        |> Maybe.map Tuple.first
-
-oneTailBound : (Float -> List (Float, Float) -> Maybe Float) -> (Float -> TailValue Float) -> Model -> Float -> Sample -> TailValue Float
-oneTailBound boundFunc tailFunc model level sample =
-    let
-        tailArea = 1 - level
-    in
-        model.ys
-        |> getPercentiles sample.n model.trials
-        |> boundFunc tailArea
-        |> Maybe.map tailFunc
-        |> Maybe.withDefault NoBounds
-
-getLeftTailBound : Model -> Float -> Sample -> TailValue Float
-
-getLeftTailBound = oneTailBound leftTailBound Lower
-
-
-
-getRightTailBound : Model -> Float -> Sample -> TailValue Float
-getRightTailBound = oneTailBound rightTailBound Upper
-
-
-
-getTwoTailBound : Model -> Float -> Sample -> TailValue Float
-getTwoTailBound model level sample = 
-            let
-                tailArea = (1 - level)/2
-                percentiles =
-                    model.ys
-                    |> getPercentiles sample.n model.trials
-                left = percentiles
-                        |> leftTailBound tailArea
-                right = percentiles
-                    |> rightTailBound tailArea
-            in
-                Maybe.map2 TwoTail left right
-                |> Maybe.withDefault NoBounds
 
 
 getBound : Model -> TailBound
 getBound model =
-    case (model.originalSample, model.tail, model.level) of
-        (Just sample, Left, Just level) -> 
-            getLeftTailBound model level sample
+    case (model.originalSample, model.level) of
+        (Just sample, Just level) -> 
+            getTwoTailBound model.trials level model.ys sample
 
-
-        (Just sample, Right, Just level) -> 
-            getRightTailBound model level sample
-
-        (Just sample, Two, Just level) -> 
-            getTwoTailBound model level sample
         _ ->
             NoBounds
 
@@ -332,213 +206,257 @@ updateTailBounds model =
     { model | tailLimit = getBound model}
 
 
+andBatchCmds : List (Model -> Cmd.Cmd msg) -> Model -> (Model, Cmd msg)
+andBatchCmds batch finalModel =
+            ( finalModel
+            , batch
+              |> List.map (\b -> b finalModel)
+              |> Cmd.batch 
+            )
+
+andRedrawPlots : Model -> (Model, Cmd Msg)
+andRedrawPlots = andBatchCmds [ originalPlotCmd , bootstrapPlotCmd , distPlotCmd ] 
+
+
+
+changeData : String -> Model -> Model
+changeData name model =
+    let
+        data = model.datasets
+                |> getNewData name
+    in
+        { model | selected = data , originalSample = Nothing} 
+
+
+loadCsv : String -> Model -> Model
+loadCsv content model =
+      { model | csv = Just content , variables = getVariables content}
+
+
+updateDataDropState : Dropdown.State -> Model -> Model
+updateDataDropState state model =
+    { model | dataDropState = state }
+
+
+updateSuccessDropState : Dropdown.State -> Model -> Model
+updateSuccessDropState state model =
+    { model | successDropState = state }
+
+
+updateFileName : File -> Model -> Model
+updateFileName file model =
+      { model | fileName = name file }
+
+
+resetFile : Model -> Model
+resetFile model =
+    { model | fileName = "None"
+            , fileType = NoType
+            , variables = Nothing
+            , selectedData = Nothing
+            , selectedVariable = Nothing
+            , counts = Nothing
+    }
+
+
+changeSuccess : String -> Model -> Model
+changeSuccess name model =
+    let
+        newSample = model.selected
+                    |>  Maybe.andThen (getSuccess name)
+    in
+        model
+        |> updateOriginal newSample
+        |> resetBootstrap 
+        |> updateBinom newSample
+        |> updateDistPlotConfig
+        |> updateTailBounds
+
+
+closeModal : Model -> Model
+closeModal model =
+    { model | modalVisibility = Modal.hidden }
+
+
+showModal : Model -> Model
+showModal model =
+    { model | modalVisibility = Modal.shown }
+
+
+
+loadData : DataSet -> Model -> Model
+loadData data model =
+    { model | selected = Just data 
+    , originalSample = Nothing
+    , datasets = data :: model.datasets
+    , modalVisibility = Modal.hidden 
+    } 
+
+changeFileType : String -> Model -> Model
+changeFileType typeString model =
+    { model | fileType = typeString |> getFileType }
+
+
+changeLevel : Float -> Model -> Model
+changeLevel level model =
+    { model | level = Just level }
+
+
+selectVariable : String -> Model -> Model
+selectVariable lbl model =
+    let
+        (var, col) = 
+            case model.variables of
+                Nothing ->
+                    (Nothing, Nothing)
+                Just vars ->
+                    (Just lbl, vars)
+                    |> Tuple.mapSecond (List.Extra.find (\p -> Tuple.first p == lbl)) 
+                    |> Tuple.mapSecond (Maybe.map Tuple.second)
+    in
+        { model | selectedData = col, selectedVariable = var}
+
+
+
+
+selectCounts : String -> Model -> Model
+selectCounts lbl model =
+        let
+            counts = 
+                model.variables
+                |> Maybe.map (findVariable lbl)
+                |> Maybe.withDefault Nothing
+                |> Maybe.map (List.map (String.toInt >> Maybe.withDefault 0))
+        in
+            { model | counts = counts }
+
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
     CsvRequested ->
-      (  { model | fileName = "None"
-                 , fileType = NoType
-                 , variables = Nothing
-                 , selectedData = Nothing
-                 , selectedVariable = Nothing
-                 , counts = Nothing
-         }
-      , Select.file ["text/csv"] CsvSelected
-      )
+        model
+        |> resetFile
+        |> pairWith (Select.file ["text/csv"] CsvSelected)
+
 
     CsvSelected file ->
-      ( { model | fileName = name file }
-      , Task.perform CsvLoaded (File.toString file)
-      )
+        model
+        |> updateFileName file
+        |> pairWith (Task.perform CsvLoaded (File.toString file))
+
 
     CsvLoaded content ->
-      ( { model | csv = Just content , variables = getVariables content}
-      , Cmd.none
-      )
+        model
+        |> loadCsv content
+        |> resetTrials
+        |> resetBootstrap 
+        |> andRedrawPlots
+
 
     DataDropMsg state ->
-        ( { model | dataDropState = state }
-        , Cmd.none
-        )
+        model
+        |> updateDataDropState state
+        |> pairWith Cmd.none
+
 
     SuccessDropMsg state ->
-        ( { model | successDropState = state }
-        , Cmd.none
-        )
+        model
+        |> updateSuccessDropState state
+        |> pairWith Cmd.none
+
 
     ChangeData name ->
-        let
-            data = model.datasets
-                    |> getNewData name
-            finalModel =
-               { model | selected = data , originalSample = Nothing} 
-                |> resetTrials
+        model
+        |> changeData name
+        |> resetTrials
+        |> andRedrawPlots
 
-        in
-            ( finalModel
-            , Cmd.batch [ originalPlotCmd finalModel , bootstrapPlotCmd finalModel, distPlotCmd finalModel] 
-            )
 
     ChangeSuccess name ->
-        let
-            newSample = model.selected
-                        |>  Maybe.andThen (getSuccess name)
-            finalModel = 
-                model
-                |> updateOriginal newSample
-                |> resetBootstrap newSample
-                |> updateBinom newSample
-                |> updateDistPlotConfig
-                |> updateTailBounds
-        in
-            ( finalModel
-            , Cmd.batch [ originalPlotCmd finalModel , bootstrapPlotCmd finalModel, distPlotCmd finalModel] 
-            )
+        model
+        |> changeSuccess name
+        |> andRedrawPlots 
+
 
     CloseModal ->
-        let
-            finalModel =
-                { model | modalVisibility = Modal.hidden }
-        in
-            ( finalModel
-            , Cmd.batch [ originalPlotCmd finalModel , bootstrapPlotCmd finalModel, distPlotCmd finalModel] 
-            )
+        model
+        |> closeModal
+        |> andRedrawPlots
+
 
     ShowModal ->
-        ( { model | modalVisibility = Modal.shown }
-        , Cmd.none
-        )
+        model
+        |> showModal
+        |> pairWith Cmd.none
+
 
     ChangeFileType s ->
-        let
-            ftype = 
-                case s of
-                    "reg" ->
-                        Regular
+        model
+        |> changeFileType s
+        |> resetTrials
+        |> pairWith Cmd.none
 
-                    "freq" ->
-                        Frequency
-
-                    _ ->
-                        NoType
-
-        in
-            ( { model | fileType = ftype }
-                |> resetTrials
-            , Cmd.none
-            )
 
     SelectVariable lbl ->
-        let
-            (var, col) = 
-                case model.variables of
-                    Nothing ->
-                        (Nothing, Nothing)
-                    Just vars ->
-                        (Just lbl, vars)
-                        |> Tuple.mapSecond (List.Extra.find (\p -> Tuple.first p == lbl)) 
-                        |> Tuple.mapSecond (Maybe.map Tuple.second)
-
-        in
-            ( { model | selectedData = col, selectedVariable = var}
-              |> updatePerspective
-            , Cmd.none
-            )
+        model
+        |> selectVariable lbl
+        |> updatePerspective
+        |> resetTrials
+        |> pairWith Cmd.none
         
+
     SelectCount lbl ->
-        let
-            rawcol = 
-                case model.variables of
-                    Nothing ->
-                        Nothing
-                    Just vars ->
-                        vars
-                        |> List.Extra.find (\p -> Tuple.first p == lbl) 
-                        |> Maybe.map Tuple.second
-            counts = 
-                rawcol
-                |> Maybe.map (List.map (String.toInt >> Maybe.withDefault 0))
-        in
-            ( { model | counts = counts }
-              |> updatePerspective
-            , Cmd.none
-            )
+        model
+        |> selectCounts lbl
+        |> updatePerspective
+        |> resetTrials
+        |> pairWith Cmd.none
+
 
     LoadUserData ->
         case model.perspectiveData of
             Nothing ->
-                (model, Cmd.none)
+                model
+                |> resetTrials
+                |> resetBootstrap
+                |> andRedrawPlots
         
             Just data ->
-                let
-                    finalModel =
-                        { model | selected = Just data 
-                        , originalSample = Nothing
-                        , datasets = data :: model.datasets
-                        , modalVisibility = Modal.hidden 
-                        } |> resetTrials
-                in
-                ( finalModel
-                , Cmd.batch [ originalPlotCmd finalModel , bootstrapPlotCmd finalModel, distPlotCmd finalModel] 
-                )
+                model
+                |> loadData data
+                |> resetTrials
+                |> resetBootstrap
+                |> andRedrawPlots
+
 
     Collect n ->
-        ( model
-        , Random.generate NewStatistics (Random.list n (Random.float 0 1))
-        )
+        model
+        |> pairWith (Random.generate NewStatistics (Random.list n (Random.float 0 1)))
 
     
     Reset ->
-        let
-            finalModel = 
-                model
-                |> resetBootstrap model.originalSample
-                |> resetTrials
-                |> updateDistPlotConfig
-        in
-        
-        (finalModel
-        , Cmd.batch [ originalPlotCmd finalModel , bootstrapPlotCmd finalModel, distPlotCmd finalModel] 
-        )
+        model
+        |> resetBootstrap 
+        |> resetTrials
+        |> updateDistPlotConfig
+        |> andRedrawPlots
 
 
-    
     NewStatistics ws ->
-        let
-            finalModel =
-                model 
-                |> updateYs ws
-                |> updateLast ws
-                |> updateDistPlotConfig
-                |> updateTailBounds
-        in
-        
-        ( finalModel 
-        , Cmd.batch [ originalPlotCmd finalModel , bootstrapPlotCmd finalModel, distPlotCmd finalModel] 
-        )
+        model 
+        |> updateYs ws
+        |> updateLast ws
+        |> updateDistPlotConfig
+        |> updateTailBounds
+        |> andRedrawPlots
 
-    ChangeTail tail ->
-        let
-            finalModel =
-                { model | tail = tail }
-                        |> updateTailBounds
-                        |> updateDistPlotConfig
-        in
-        ( finalModel
-        , Cmd.batch [ originalPlotCmd finalModel , bootstrapPlotCmd finalModel, distPlotCmd finalModel] 
-        )
-                
         
     ChangeLevel level ->
-        let
-            finalModel =
-                  { model | level = Just level }
-                        |> updateTailBounds
-                        |> updateDistPlotConfig
-        in
-        ( finalModel
-        , Cmd.batch [ originalPlotCmd finalModel , bootstrapPlotCmd finalModel, distPlotCmd finalModel] 
-        )
+        model
+        |> changeLevel level
+        |> updateTailBounds
+        |> updateDistPlotConfig
+        |> andRedrawPlots
 
 
 
@@ -570,70 +488,6 @@ subscriptions model =
         ]
 
 -- VIEW)
-
-fileContent : Model -> Html Msg
-fileContent model = 
-    let
-        n = 1000
-        trials = model.trials
-        percentiles = model.ys |> getPercentiles n trials
-        
-    in
-    
-  case model.csv of
-    Nothing ->
-      div []    [ percentiles
-                    |> leftTailBound 0.05
-                    |> Debug.toString
-                    |> text
-                , percentiles
-                    |> rightTailBound 0.05
-                    |> Debug.toString
-                    |> text
-
-                , percentiles
-                    |> takeWhile (Tuple.second >> (>) 0.05)
-                    |> last
-                    |> Maybe.map Tuple.first
-                    |> Debug.toString
-                    |> text
-                , percentiles
-                    |> dropWhileRight (Tuple.second >> (<) 0.95)
-                    |> last
-                    |> Maybe.map Tuple.first
-                    |> Debug.toString
-                    |> text
-                , model
-                    |> Debug.toString
-                    |> text
-                , br [] []
-                , br [] []
-                , example2
-                    |> String.trim
-                    |> getHeadTail
-                    |> Maybe.withDefault ("guh", [])
-                    -- |> Tuple.mapSecond (String.split "\n")
-                    |> Tuple.mapSecond List.tail
-                    |> Tuple.mapSecond (Maybe.withDefault [])
-                    |> Tuple.mapSecond List.sort
-                    |> Tuple.mapSecond group
-                    |> Tuple.mapSecond (List.map (Tuple.mapSecond (List.length >> (+) 1)))
-                    |> Debug.toString
-                    |> text
-                , br [] []
-                , br [] []
-             ]
-    Just content ->
-        div []
-            [ p [ style "white-space" "pre" ] [ text content ]
-            , model.ys
-              |> Dict.toList
-              |> Debug.toString
-              |> text
-            , model
-              |> Debug.toString
-              |> text
-            ]
 
 dropdownItem : (String -> Msg) -> String -> Dropdown.DropdownItem Msg
 dropdownItem msg txt =
@@ -683,12 +537,8 @@ dataButtonToggle _ =
 
 noSelectedVar : Model -> Bool
 noSelectedVar model =
-    case model.selected of
-        Nothing ->
-            True
-        
-        _ ->
-            False
+    model.selected
+    |> isNothing
 
 successButtonToggle : Model -> Dropdown.DropdownToggle msg
 successButtonToggle model =
@@ -714,19 +564,12 @@ variableItem lbl =
 
 variableItems : Model -> List (Select.Item msg)
 variableItems model =
-    let
-        baseItems = [ Select.item [ value "none"] [ text "Not Selected"]]
-        varItems = 
-            case model.variables of
-                Nothing ->
-                    []
-                Just el ->
-                    let
-                        varNames = List.map Tuple.first el
-                    in
-                        List.map variableItem varNames
-    in
-        baseItems ++ varItems
+    model
+    |> .variables
+    |> Maybe.withDefault []
+    |> List.map Tuple.first 
+    |> List.map variableItem 
+    |> (++) [ Select.item [ value "none"] [ text "Not Selected"]]
     
 
 makeTableRow : LabelFreq -> Table.Row msg
@@ -736,36 +579,41 @@ makeTableRow labelFreq =
         , Table.td [] [ labelFreq |> .count |> String.fromInt |> text  ]
         ]
 
-genericDropdown : (Model -> String) -> String -> (Model -> Dropdown.State) -> (Dropdown.State -> Msg) -> (Model -> Dropdown.DropdownToggle Msg) -> (Model -> List (Dropdown.DropdownItem Msg)) -> Model -> Html Msg
-genericDropdown placeholder lbl state msg toggle items model =
-    InputGroup.config
-        ( InputGroup.text [ Input.placeholder (placeholder model), Input.disabled True] )  --++ inputFeedback model) )
-        |> InputGroup.small
-        |> InputGroup.predecessors
-            [ InputGroup.span [] [ b [] [text lbl]] ]
-        |> InputGroup.successors
-                [ InputGroup.dropdown
-                    (model |> state)
-                    { options = [ Dropdown.alignMenuRight ]
-                    , toggleMsg = msg
-                    , toggleButton = toggle model
-                    , items = items model
-                    }
-                ]
-        |> InputGroup.view
+
+dataDropdownConfig : Model -> DropdownConfig Msg
+dataDropdownConfig model =
+    { placeholder = dataPlaceholder model
+    , label = "Data"
+    , state = model.dataDropState
+    , toggle = DataDropMsg
+    , button = dataButtonToggle model
+    , items = dropdownData model
+    }
+
+
+successDropdownConfig : Model -> DropdownConfig Msg
+successDropdownConfig model =
+    { placeholder = successPlaceholder model
+    , label = "Success"
+    , state = model.successDropState
+    , toggle = SuccessDropMsg
+    , button = successButtonToggle model
+    , items = dropdownSuccess model
+    }
+
 
 dataDropdown : Model -> Html Msg
-dataDropdown = genericDropdown dataPlaceholder "Data" .dataDropState DataDropMsg dataButtonToggle dropdownData
+dataDropdown = dataDropdownConfig >> genericDropdown
     
 
 successDropdown : Model -> Html Msg
-successDropdown = genericDropdown successPlaceholder "Success" .successDropState SuccessDropMsg successButtonToggle dropdownSuccess
-
+successDropdown = successDropdownConfig >> genericDropdown 
 
 
 noPerspectiveData : Model -> Bool
 noPerspectiveData model =
-    model.perspectiveData == Nothing
+    model.perspectiveData
+    |> isNothing
 
 genericButton : (Model -> Bool) -> List (Html.Attribute Msg) -> Msg -> String -> Model -> Html Msg
 genericButton isDisabled attrs onclick lbl model =
@@ -831,23 +679,25 @@ countSelect : Model -> Html Msg
 countSelect = genericSelect "countselect" notFrequency SelectCount variableItems
 
 
+dataTable : DataSet -> Html msg
+dataTable data =
+    Table.table
+            { options = [ Table.small, Table.striped, Table.bordered]
+            , thead = Table.simpleThead
+                        [ Table.th [] [ text "Label" ]
+                        , Table.th [] [ text "Count" ]
+                        ]
+            , tbody = 
+                Table.tbody []
+                            (List.map makeTableRow data.frequencies)
+            }
+
+
 previewTable : Model -> Html Msg
 previewTable model = 
-    case model.perspectiveData of
-        Nothing ->
-            div [] []
-        
-        Just data ->
-            Table.table
-                    { options = [ Table.small, Table.striped, Table.bordered]
-                    , thead = Table.simpleThead
-                                [ Table.th [] [ text "Label" ]
-                                , Table.th [] [ text "Count" ]
-                                ]
-                    , tbody = 
-                        Table.tbody []
-                                    (List.map makeTableRow data.frequencies)
-                    }
+    model.perspectiveData 
+    |> unwrap (div [] []) dataTable
+
 
 uploadFormRow : Model -> String -> (Model -> Html Msg) -> Html Msg
 uploadFormRow model lbl input =
@@ -900,57 +750,36 @@ dataEntryInputGroupView model =
         ]
 
 
-statisticView : (Model -> Maybe Sample) -> Model -> Html Msg
-statisticView dotSample model =
-    case model |> dotSample of
-        Nothing ->
-            div [] []
-        
-        Just success ->
-            let
-                lbl = success.successLbl
-                n = success.n |> String.fromInt
-                cnt = success.numSuccess |> String.fromInt
-                prop = 
-                    (toFloat success.numSuccess )/(toFloat success.n) 
-                    |> roundFloat 3
-                    |> String.fromFloat 
-                emptySample = (success.numSuccess + success.numFailures) == 0
-            in
-                if emptySample then div [] [] else
-                    div [ style "font-size" "smaller"] 
-                        [ "N = " ++ n |> text
-                        , br [] []
-                        , "Count(" ++ lbl ++ ") = " ++ cnt |> text
-                        , br [] []
-                        , "Prop(" ++ lbl ++ ") = " ++ prop |> text
-                        , br [] []
-                        ]
 
-
-sampleGrid : (Model -> Maybe Sample) -> String -> String -> Model -> Html Msg
-sampleGrid dotSample label plotId model =
-    case model |> dotSample of
-            Nothing ->
-                div [] []
-            _ ->
-                div []
-                    [ Form.group []
-                        [ h4 [] [ Html.text label]
-                        , Grid.row []
-                            [ Grid.col [ Col.xs7 ] [ div [id plotId ] [] ]
-                            , Grid.col [ Col.xs5 ] [ statisticView dotSample model ]
-                            ]
-                        ]
-                    ]
+sampleGrid :  String -> String -> Html msg -> Html msg
+sampleGrid label plotId s =
+    div []
+        [ Form.group []
+            [ h4 [] [ Html.text label]
+            , Grid.row []
+                [ Grid.col [ Col.xs7 ] [ div [id plotId ] [] ]
+                , Grid.col [ Col.xs5 ] [ s ]
+                ]
+            ]
+        ]
 
 originalSampleView : Model -> Html Msg
-originalSampleView = sampleGrid .originalSample "Original Sample" "samplePlot"
+originalSampleView model =
+    model
+    |> .originalSample
+    |> maybeSampleView
+    |> sampleGrid "Original Sample" "samplePlot"
 
 
 bootstrapSampleView : Model -> Html Msg
-bootstrapSampleView = sampleGrid .bootstrapSample "Bootstrap Sample" "bootstrapPlot"
+bootstrapSampleView model = 
+    model
+    |> .bootstrapSample
+    |> maybeSampleView
+    |> sampleGrid "Bootstrap Sample" "bootstrapPlot"
 
+-- layout function
+collectButtonGrid : Html msg -> Html msg -> Html msg -> Html msg
 collectButtonGrid reset buttons count =
     div [] [ Form.group []
               [ Grid.row []
@@ -973,15 +802,6 @@ collectButtonGrid reset buttons count =
               ]
           ]
 
-collectButtonView : Model -> Html Msg
-collectButtonView model =
-    collectButtonGrid 
-        ( resetButton Reset)
-        ( if model.originalSample /= Nothing then 
-            collectButtons Collect defaults.collectNs 
-          else 
-            div [] [])
-        ( totalCollectedTxt model.trials )
 
 
 distPlotView : Model -> Html Msg
@@ -992,66 +812,90 @@ distPlotView model =
             div [id "distPlot" ] []
 
 
+
 outputText : Model -> String
-outputText model =
-    case model.tailLimit of
-        NoBounds ->
-            "??"
+outputText = .tailLimit >> confIntOutput
 
-        Lower l ->
-            "p > " ++ (l |> roundFloat 4 |> String.fromFloat )
-        
-        Upper u ->
-            "p < " ++ (u |> roundFloat 4 |> String.fromFloat )
 
-        TwoTail l u ->
-            (l |> roundFloat 4 |> String.fromFloat ) ++ " < p < " ++ (u |> roundFloat 4 |> String.fromFloat )
+formRow : Col.Option msg -> Col.Option msg -> String -> Html msg -> List (Grid.Column msg)
+formRow left right lbl content =
+    [ Grid.col [ left ] [ b [] [text lbl ]]
+    , Grid.col [ right ] [  content ]
+    , Grid.colBreak []
+    ]
 
+formRows : Col.Option msg -> Col.Option msg -> List (String, Html msg) -> List (Grid.Column msg)
+formRows left right comps = 
+    comps
+    |> List.map (Tuple.Extra.apply (formRow left right))
+    |> List.foldr (++) []
+
+
+
+formGroup : Col.Option msg -> Col.Option msg -> String -> List (String, Html msg)  -> Html msg
+formGroup left right title components =
+        div [] 
+            [ Form.group []
+                [ Grid.row []
+                    [ Grid.col  [ Col.xs9 ]
+                                [ Html.h4 [] [Html.text title]
+                                , div []
+                                        [ Grid.container []
+                                                [ Grid.row []
+                                                    (formRows left right components)
+                                                ]
+                                        ]
+                                
+                                ]
+                        ]
+                ]
+            ]
+
+confLimitsGrid : Html msg -> Html msg -> Html msg 
+confLimitsGrid levelButtons output =
+    let
+        components =    [ ("Level",  levelButtons)
+                        , ("Result", output)
+                        ]
+    in
+        formGroup Col.sm3 Col.sm9 "Confidence Interval" components
+
+collectGrid : Html msg -> Html msg -> Html msg -> Html msg 
+collectGrid buttons numCollected resetButton =
+    let
+        components =    [ ("", buttons)
+                        --, ("",  numCollected)
+                        , ("", resetButton)
+                        ]
+    in
+        formGroup Col.sm1 Col.sm11 "Collect Statistics" components
+
+maybeShowControls : (Model -> Html msg) -> Model -> Html msg
+maybeShowControls v model =
+    if model.originalSample |> isNothing then
+        div [] []
+    else
+        model |> v
 
 confLimitsView : Model -> Html Msg
 confLimitsView model =
-    div [] [ Form.group []
-              [ Grid.row []
-                  [ Grid.col  [ Col.xs9 ]
-                              [ Html.h4 [] [Html.text "Confidence Interval"]
-                              , div []
-                                    [ Grid.container []
-                                            [ Grid.row []
-                                                [ Grid.col [ Col.sm3 ] [ b [] [text "Tail" ]]
-                                                , Grid.col [ Col.sm8 ] [  tailButtonView model ]
-                                                , Grid.colBreak []
-                                                , Grid.col [ Col.sm3 ] [ b [] [text "Level" ]]
-                                                , Grid.col [ Col.sm8 ] [  levelButtonView model]
-                                                , Grid.colBreak []
-                                                , Grid.col [ Col.sm3 ] [ b [] [text "Interval" ]]
-                                                , Grid.col [ Col.sm8 ] [ model |> outputText |> text ]
-                                                ]
-                                            ]
-                                    ]
-                              
-                              ]
-                    ]
-              ]
-    ]
+    confLimitsGrid 
+        (levelButtonView model)
+        (model |> outputText |> text )
 
 
+maybeConfIntView : Model -> Html Msg
+maybeConfIntView = maybeShowControls confLimitsView
 
-tailButtonView : Model -> Html Msg
-tailButtonView model =
-  ButtonGroup.radioButtonGroup []
-          [ ButtonGroup.radioButton
-                  (model.tail == Left)
-                  [ Button.primary, Button.small, Button.onClick <| ChangeTail Left ]
-                  [ Html.text "Left" ]
-          , ButtonGroup.radioButton
-                  (model.tail == Right)
-                  [ Button.primary, Button.small, Button.onClick <| ChangeTail Right ]
-                  [ Html.text "Right" ]
-          , ButtonGroup.radioButton
-                  (model.tail == Two)
-                  [ Button.primary, Button.small, Button.onClick <| ChangeTail Two ]
-                  [ Html.text "Two" ]
-          ]
+collectView : Model -> Html Msg
+collectView model =
+    collectGrid 
+        (collectButtons Collect defaults.collectNs)
+        ( totalCollectedTxt model.trials )
+        ( resetButton Reset)
+
+maybeCollectView : Model -> Html Msg
+maybeCollectView = maybeShowControls collectView
 
 
 makeLevelButton : Model -> Float -> String -> ButtonGroup.RadioButtonItem Msg
@@ -1073,7 +917,80 @@ levelButtonView model =
           (List.map2 (makeLevelButton model) defaults.levels defaults.levelsTxt)
 
 
-mainGrid dataEntry originalSample bootstrapSample collectButtons distPlot confLimits debug =
+distSummaryGrid : Html msg -> Html msg -> Html msg -> Html msg 
+distSummaryGrid mean sd nSamples =
+    let
+        components =    [ ("Mean",   mean)
+                        , ("SE",  sd)
+                        , ("Samples", nSamples)
+                        ]
+    in
+        formGroup Col.sm4 Col.sm8 "Bootstrap Distribution" components
+
+
+leverage : Int -> Int -> Int -> Int -> Float
+leverage trials n val cnt  =
+    let
+        prop = (toFloat val) / (toFloat n)
+        frac = (toFloat cnt) / (toFloat trials)
+    in
+        prop * frac
+
+leverages : Int -> CountDict -> Int -> Float
+leverages trials countDict n =
+    countDict
+    |> Dict.toList  
+    |> List.map (Tuple.Extra.apply (leverage trials n))
+    |> List.foldl (+) 0
+    |> roundFloat 3
+
+residSqr : Float -> Float -> Float
+residSqr mean x = (x - mean)^2
+
+divideBy : Int -> Int -> Float
+divideBy denom numer =
+    (toFloat numer) / (toFloat denom)
+
+standDev : Int -> CountDict -> Float -> Sample -> Float
+standDev trials countDict mean sample =
+    countDict
+    |> Dict.toList  
+    |> List.map (Tuple.mapFirst (divideBy (sample |> .n) >> (residSqr mean)))
+    |> List.map (Tuple.mapSecond (divideBy (trials - 1)))
+    |> List.map (Tuple.Extra.apply (*))
+    |> List.foldl (+) 0
+    |> sqrt
+    |> roundFloat 3
+
+
+distSummaryView : Model -> Html Msg
+distSummaryView model =
+    let
+        mean = model.originalSample 
+                |> Maybe.map  (.n >> leverages model.trials model.ys)
+        meanStr = 
+                mean
+                |> unwrap "??" String.fromFloat
+                |> text
+        sD = Maybe.map2 (standDev model.trials model.ys) mean model.originalSample
+        
+        sdStr =
+            sD 
+            |> unwrap "??" String.fromFloat
+            |> text
+
+        nSamples = model.trials
+                 |> String.fromInt
+                 |> text
+ 
+    in
+        distSummaryGrid meanStr sdStr nSamples 
+
+maybeDistSummaryView : Model -> Html Msg
+maybeDistSummaryView = maybeShowControls distSummaryView
+
+mainGrid : Html msg -> Html msg -> Html msg -> Html msg -> Html msg -> Html msg -> Html msg -> Html msg-> Html msg
+mainGrid dataEntry originalSample bootstrapSample collectButtons distPlot confLimits distSummary debug =
     div [] [  Grid.container []
                 [CDN.stylesheet -- creates an inline style node 
                 , Grid.row []
@@ -1095,8 +1012,9 @@ mainGrid dataEntry originalSample bootstrapSample collectButtons distPlot confLi
                                [div [] 
                                     [ collectButtons
                                     , br [] []
+                                    , distSummary
+                                    , br [] []
                                     , confLimits
-
                                     ]
                                 ]
                     , Grid.col [ Col.md8] 
@@ -1118,9 +1036,10 @@ view model =
             (dataEntryInputGroupView model) 
             (originalSampleView model)
             (bootstrapSampleView model)
-            (collectButtonView model)
+            (maybeCollectView model)
             (distPlotView model)
-            (confLimitsView model)
+            (maybeConfIntView model)
+            (maybeDistSummaryView model)
             (div [] [] )
             --(fileContent model)
       ]

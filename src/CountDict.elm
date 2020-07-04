@@ -1,6 +1,7 @@
 module CountDict exposing (..)
 
 import Dict exposing (..)
+import List.Extra exposing (zip, scanl)
 
 type alias Count = (Int, Int)
 
@@ -41,3 +42,14 @@ updateTallest pair currentMax =
     ( _ , newY) = pair
   in
     Basics.max newY currentMax
+
+divideBy : Int -> Int -> Float
+divideBy denom numer =
+    (toFloat numer)/(toFloat denom) 
+
+getPercentiles : Int -> Int -> CountDict -> List (Float, Float)
+getPercentiles n trials counts =
+        counts
+        |> Dict.toList
+        |> List.map (Tuple.mapBoth (divideBy n) (divideBy trials))
+        |> \el -> zip (List.map Tuple.first el) (el |> List.map Tuple.second |> scanl (+) 0 )

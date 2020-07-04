@@ -15,7 +15,11 @@
             "elm/svg": "1.0.1",
             "elm/time": "1.0.0",
             "elm-community/list-extra": "8.2.2",
+            "elm-community/maybe-extra": "5.2.0",
             "gicentre/elm-vegalite": "1.12.0",
+            "lukewestby/elm-string-interpolate": "1.0.4",
+            "lukewestby/elm-template": "3.0.0",
+            "pd-andy/tuple-extra": "1.0.1",
             "rundis/elm-bootstrap": "5.2.0",
             "yotamDvir/elm-katex": "2.0.1"
         },

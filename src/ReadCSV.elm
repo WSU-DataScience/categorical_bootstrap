@@ -2,6 +2,8 @@ module ReadCSV exposing (..)
 
 import List.Extra exposing (uncons, getAt, zip)
 
+type FileType = NoType | Regular | Frequency
+
 example1 = "ABO Blood Type,Count\nA,16\nAB,1\nB,11\nO,26\n"
 example2 = "ABO Blood Type\nA\nO\nA\nO\nO\nO\nB\nA\nA\nO\nA\nA\nB\nB\nO\nO\nO\nO\nO\nO\nB\nB\nA\nA\nO\nO\nA\nO\nO\nB\nO\nA\nAB\nB\nA\nB\nA\nO\nO\nB\nA\nB\nB\nO\nO\nO\nO\nA\nO\nO\nA\nO\nO\nA\n"
 
@@ -63,3 +65,23 @@ getVariables rawfile =
     |> Maybe.map (Tuple.mapSecond clearBlankRows)
     |> Maybe.map (Tuple.mapBoth colIdx splitBody)
     |> Maybe.map getCols
+
+
+findVariable : String -> List Variable -> Maybe (List String)
+findVariable lbl vars =
+    vars
+    |> List.Extra.find (\p -> Tuple.first p == lbl) 
+    |> Maybe.map Tuple.second
+
+
+getFileType : String -> FileType
+getFileType typeLbl = 
+    case typeLbl of
+        "reg" ->
+            Regular
+
+        "freq" ->
+            Frequency
+
+        _ ->
+            NoType

@@ -33,6 +33,6 @@ collectButtons : (Int -> msg) -> List Int -> Html msg
 collectButtons toOnClick ns =
     div []
         [ ButtonGroup.buttonGroup
-            [ ButtonGroup.small, ButtonGroup.attrs [ style "display" "block"] ]
+            [ ButtonGroup.small, ButtonGroup.attrs [ style "display" "block", style "padding-right" "1px", style "padding-left" "1px"]]
             (List.map (collectButton toOnClick) ns)
         ]

@@ -2,6 +2,12 @@ module DataSet exposing (..)
 
 
 import List.Extra exposing (find, group, zip)
+import Binomial exposing (roundFloat)
+import Maybe exposing (withDefault)
+import Maybe.Extra exposing (isNothing, unwrap)
+import Template exposing (template, render, withValue, withString)
+import Html exposing (Html, button, text, div, h3, h5, h4, b, br)
+import Html.Attributes exposing (style, value, class, id)
 
 type Statistic = NotSelected | Count | Proportion
 type alias LabelFreq =  { label : String
@@ -84,22 +90,6 @@ createDataFromFreq name lbls cnts =
 getNewData : String -> List DataSet -> Maybe DataSet
 getNewData dataName = find (\d -> d.name == dataName)
 
-type alias Sample = { successLbl : String
-                     , failureLbl : String
-                     , numSuccess : Int
-                     , numFailures : Int
-                     , n : Int
-                     }
-
-makeEmptySample : Sample -> Sample
-makeEmptySample sample =
-    { sample | numSuccess = 0, numFailures = 0}
-
-updateSample : Int -> Sample -> Sample
-updateSample x sample =
-    { sample | numSuccess = x, numFailures = sample.n - x }
-
-
 getLabels : DataSet -> List String
 getLabels data =
     data.frequencies
@@ -116,18 +106,3 @@ getN data =
     data
     |> getCounts
     |> List.foldl (+) 0
-
-getSuccess : String -> DataSet -> Maybe Sample
-getSuccess txt data =
-    let
-        n = data 
-            |> getN
-    in
-     data.frequencies
-        |> find (\p -> .label p == txt)
-        |> Maybe.map (\labelFreq -> { successLbl = .label labelFreq
-                                    , failureLbl = "Not " ++ .label labelFreq
-                                    , numSuccess = .count labelFreq
-                                    , numFailures = n - .count labelFreq
-                                    , n = n
-                                    })
